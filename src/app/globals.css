@@ -1,26 +1,109 @@
+@config "../../tailwind.config.mjs";
 @import "tailwindcss";
 
+/* ==========================================================================
+   THEME COLOR CONFIGURATION (WHITE & LIGHT ORANGE PALETTE)
+   ==========================================================================
+   To change the primary brand theme color across the ENTIRE application,
+   simply update the `--color-primary-*` values below in one single place!
+   All buttons, badges, inputs, focus states, backgrounds, icons & gradients
+   will automatically reflect your updated theme color.
+   ========================================================================== */
+
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  /* Primary Theme Palette (Light Orange Theme) */
+  --color-primary-50: #fff7ed;   /* Softest orange tint / active background */
+  --color-primary-100: #ffedd5;  /* Light orange badge / hover tint */
+  --color-primary-200: #fed7aa;  /* Light orange subtle border */
+  --color-primary-300: #fdba74;  /* Input highlight border */
+  --color-primary-400: #fb923c;  /* Bright orange accent */
+  --color-primary-500: #f97316;  /* Main Brand Primary Orange */
+  --color-primary-600: #ea580c;  /* Hover state primary orange */
+  --color-primary-700: #c2410c;  /* Active/pressed state orange */
+  --color-primary-800: #9a3412;  /* Deep text brand color */
+  --color-primary-900: #7c2d12;  /* Darkest orange tint */
+
+  /* Neutral Background & Surface Colors (Crisp White Base) */
+  --color-brand-bg: #ffffff;      /* Clean White Page Background */
+  --color-brand-surface: #fffbf7; /* Subtle Warm Light Orange Tint Surface */
+  --color-brand-card: #ffffff;    /* Pure White Card Background */
+  --color-brand-text-main: #0f172a; /* Slate 900 Heading Text */
+  --color-brand-text-muted: #64748b;/* Slate 500 Subtitle Text */
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
+/* Tailwind CSS Theme Registration */
+@theme {
+  --color-primary-50: var(--color-primary-50);
+  --color-primary-100: var(--color-primary-100);
+  --color-primary-200: var(--color-primary-200);
+  --color-primary-300: var(--color-primary-300);
+  --color-primary-400: var(--color-primary-400);
+  --color-primary-500: var(--color-primary-500);
+  --color-primary-600: var(--color-primary-600);
+  --color-primary-700: var(--color-primary-700);
+  --color-primary-800: var(--color-primary-800);
+  --color-primary-900: var(--color-primary-900);
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --color-brand-50: var(--color-primary-50);
+  --color-brand-100: var(--color-primary-100);
+  --color-brand-200: var(--color-primary-200);
+  --color-brand-300: var(--color-primary-300);
+  --color-brand-400: var(--color-primary-400);
+  --color-brand-500: var(--color-primary-500);
+  --color-brand-600: var(--color-primary-600);
+  --color-brand-700: var(--color-primary-700);
+  --color-brand-800: var(--color-primary-800);
+  --color-brand-900: var(--color-primary-900);
+  
+  --color-brand-bg: var(--color-brand-bg);
+  --color-brand-surface: var(--color-brand-surface);
+  --color-brand-card: var(--color-brand-card);
+  --color-brand-text: var(--color-brand-text-main);
+  --color-brand-muted: var(--color-brand-text-muted);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background-color: var(--color-brand-bg);
+  color: var(--color-brand-text-main);
+  font-family: var(--font-geist-sans), system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  overflow-x: hidden;
+}
+
+/* Custom Soft Light Orange Glow & Card Shadows */
+.shadow-brand-orange {
+  box-shadow: 0 10px 30px -5px rgba(249, 115, 22, 0.18), 0 4px 12px -2px rgba(249, 115, 22, 0.08);
+}
+
+.shadow-brand-glow {
+  box-shadow: 0 0 25px rgba(249, 115, 22, 0.25);
+}
+
+.shadow-card-subtle {
+  box-shadow: 0 4px 20px -2px rgba(0, 0, 0, 0.05), 0 2px 6px -1px rgba(0, 0, 0, 0.03);
+}
+
+/* Glassmorphic Warm Surface Effect */
+.glass-surface {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+/* Soft Keyframe Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.6; transform: scale(1); }
+  50% { opacity: 0.9; transform: scale(1.04); }
+}
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulseGlow 4s ease-in-out infinite;
 }
