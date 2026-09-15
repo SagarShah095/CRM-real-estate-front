@@ -1,5 +1,4 @@
 import LoginPage from "@/components/LoginPage";
-import ThemeColorPicker from "@/components/ThemeColorPicker";
 
 export const metadata = {
   title: "Sign In | Shiv Pooja Residency CRM",
@@ -10,7 +9,7 @@ export default function Page() {
   return (
     <main className="min-h-screen w-full bg-brand-surface flex flex-col justify-center py-8 relative">
       <LoginPage />
-      <ThemeColorPicker />
     </main>
   );
 }
+

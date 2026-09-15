@@ -41,7 +41,7 @@ export default function LoginPage({ onSwitchToForgot }) {
   return (
     <div className="w-full max-w-md mx-auto my-auto p-4 sm:p-6">
       {/* Main Clean Card Container */}
-      <div className="rounded-3xl bg-brand-card shadow-2xl border border-primary-100 p-6 sm:p-8 lg:p-10">
+      <div className="rounded-3xl bg-brand-card shadow-2xl border border-primary/20 p-6 sm:p-8 lg:p-10">
         <div className="space-y-6">
           {/* Header */}
           <div className="text-center">
@@ -82,7 +82,7 @@ export default function LoginPage({ onSwitchToForgot }) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   required
-                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all"
+                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all"
                 />
               </div>
             </div>
@@ -97,14 +97,14 @@ export default function LoginPage({ onSwitchToForgot }) {
                   <button
                     type="button"
                     onClick={onSwitchToForgot}
-                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 hover:underline transition-colors"
+                    className="text-xs font-semibold text-primary hover:underline transition-colors"
                   >
                     Forgot password?
                   </button>
                 ) : (
                   <Link
                     href="/forgot-password"
-                    className="text-xs font-semibold text-primary-600 hover:text-primary-700 hover:underline transition-colors"
+                    className="text-xs font-semibold text-primary hover:underline transition-colors"
                   >
                     Forgot password?
                   </Link>
@@ -120,12 +120,12 @@ export default function LoginPage({ onSwitchToForgot }) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   required
-                  className="w-full pl-11 pr-12 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary-500 focus:ring-4 focus:ring-primary-100 transition-all"
+                  className="w-full pl-11 pr-12 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-primary-600 transition-colors"
+                  className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-primary transition-colors"
                   title={showPassword ? "Hide Password" : "Show Password"}
                 >
                   {showPassword ? (
@@ -147,7 +147,7 @@ export default function LoginPage({ onSwitchToForgot }) {
                     onChange={(e) => setRememberMe(e.target.checked)}
                     className="peer sr-only"
                   />
-                  <div className="h-5 w-5 rounded-lg border border-gray-300 bg-white peer-checked:bg-primary-500 peer-checked:border-primary-500 transition-all group-hover:border-primary-400" />
+                  <div className="h-5 w-5 rounded-lg border border-gray-300 bg-white peer-checked:bg-primary peer-checked:border-primary transition-all group-hover:border-primary" />
                   <CheckCircle2 className="h-4 w-4 text-white absolute inset-0 m-auto opacity-0 peer-checked:opacity-100 transition-opacity pointer-events-none" />
                 </div>
                 <span className="text-xs font-medium text-gray-600 group-hover:text-gray-900 transition-colors">
@@ -160,7 +160,7 @@ export default function LoginPage({ onSwitchToForgot }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 px-6 rounded-2xl bg-primary-500 hover:bg-primary-600 active:bg-primary-700 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
             >
               {isLoading ? (
                 <>
@@ -180,3 +180,4 @@ export default function LoginPage({ onSwitchToForgot }) {
     </div>
   );
 }
+

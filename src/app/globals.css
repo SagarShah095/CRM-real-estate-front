@@ -2,26 +2,12 @@
 @import "tailwindcss";
 
 /* ==========================================================================
-   THEME COLOR CONFIGURATION (WHITE & LIGHT ORANGE PALETTE)
-   ==========================================================================
-   To change the primary brand theme color across the ENTIRE application,
-   simply update the `--color-primary-*` values below in one single place!
-   All buttons, badges, inputs, focus states, backgrounds, icons & gradients
-   will automatically reflect your updated theme color.
+   PRIMARY THEME COLOR CONFIGURATION (#f97316)
    ========================================================================== */
 
 :root {
-  /* Primary Theme Palette (Light Orange Theme) */
-  --color-primary-50: #fff7ed;   /* Softest orange tint / active background */
-  --color-primary-100: #ffedd5;  /* Light orange badge / hover tint */
-  --color-primary-200: #fed7aa;  /* Light orange subtle border */
-  --color-primary-300: #fdba74;  /* Input highlight border */
-  --color-primary-400: #fb923c;  /* Bright orange accent */
-  --color-primary-500: #f97316;  /* Main Brand Primary Orange */
-  --color-primary-600: #ea580c;  /* Hover state primary orange */
-  --color-primary-700: #c2410c;  /* Active/pressed state orange */
-  --color-primary-800: #9a3412;  /* Deep text brand color */
-  --color-primary-900: #7c2d12;  /* Darkest orange tint */
+  /* Single Primary Brand Color */
+  --color-primary: #f97316;
 
   /* Neutral Background & Surface Colors (Crisp White Base) */
   --color-brand-bg: #ffffff;      /* Clean White Page Background */
@@ -33,28 +19,8 @@
 
 /* Tailwind CSS Theme Registration */
 @theme {
-  --color-primary-50: var(--color-primary-50);
-  --color-primary-100: var(--color-primary-100);
-  --color-primary-200: var(--color-primary-200);
-  --color-primary-300: var(--color-primary-300);
-  --color-primary-400: var(--color-primary-400);
-  --color-primary-500: var(--color-primary-500);
-  --color-primary-600: var(--color-primary-600);
-  --color-primary-700: var(--color-primary-700);
-  --color-primary-800: var(--color-primary-800);
-  --color-primary-900: var(--color-primary-900);
-
-  --color-brand-50: var(--color-primary-50);
-  --color-brand-100: var(--color-primary-100);
-  --color-brand-200: var(--color-primary-200);
-  --color-brand-300: var(--color-primary-300);
-  --color-brand-400: var(--color-primary-400);
-  --color-brand-500: var(--color-primary-500);
-  --color-brand-600: var(--color-primary-600);
-  --color-brand-700: var(--color-primary-700);
-  --color-brand-800: var(--color-primary-800);
-  --color-brand-900: var(--color-primary-900);
-  
+  --color-primary: var(--color-primary);
+  --color-brand: var(--color-primary);
   --color-brand-bg: var(--color-brand-bg);
   --color-brand-surface: var(--color-brand-surface);
   --color-brand-card: var(--color-brand-card);

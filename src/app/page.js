@@ -5,7 +5,6 @@ import Link from "next/link";
 import LoginPage from "@/components/LoginPage";
 import ForgotPasswordPage from "@/components/ForgotPasswordPage";
 import ResetPasswordPage from "@/components/ResetPasswordPage";
-import ThemeColorPicker from "@/components/ThemeColorPicker";
 import {
   Building2,
   LogIn,
@@ -63,7 +62,6 @@ export default function Home() {
       </footer>
 
       {/* FLOATING THEME CONTROL ENGINE */}
-      <ThemeColorPicker />
     </div>
   );
 }

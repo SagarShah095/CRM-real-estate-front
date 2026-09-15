@@ -41,6 +41,7 @@ export default function ResetPasswordPage({ onSwitchToLogin }) {
     hasSpecial,
   ].filter(Boolean).length;
 
+  //test
   // Calculate Strength Label & Percentage
   const getStrengthInfo = () => {
     if (newPassword.length === 0)

@@ -51,17 +51,15 @@ export default function ForgotPasswordPage({
 
   return (
     <div className="w-fit max-w-5xl mx-auto my-auto p-4 sm:p-6 lg:p-8">
-      {/* LEFT COLUMN: Informational Side Banner */}
-
       {/* RIGHT COLUMN: Form Area */}
-      <div className="lg:col-span-7 rounded-2xl p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-brand-card">
+      <div className="lg:col-span-7 rounded-2xl p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-brand-card shadow-2xl border border-primary/20">
         <div className="max-w-md w-full mx-auto space-y-6">
           {/* Top Back Navigation Link */}
           <div>
             {onSwitchToLogin ? (
               <button
                 onClick={onSwitchToLogin}
-                className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors mb-4"
+                className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:underline transition-colors mb-4"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back to Sign In</span>
@@ -69,7 +67,7 @@ export default function ForgotPasswordPage({
             ) : (
               <Link
                 href="/login"
-                className="inline-flex items-center gap-2 text-xs font-bold text-brand-600 hover:text-brand-700 transition-colors mb-4"
+                className="inline-flex items-center gap-2 text-xs font-bold text-primary hover:underline transition-colors mb-4"
               >
                 <ArrowLeft className="h-4 w-4" />
                 <span>Back to Sign In</span>
@@ -101,7 +99,7 @@ export default function ForgotPasswordPage({
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="name@shivpooja-residency.com"
                     required
-                    className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-100 transition-all"
+                    className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all"
                   />
                 </div>
               </div>
@@ -109,7 +107,7 @@ export default function ForgotPasswordPage({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70"
+                className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70"
               >
                 {isLoading ? (
                   <>
@@ -127,14 +125,14 @@ export default function ForgotPasswordPage({
           ) : (
             /* Success Confirmation View */
             <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-              <div className="p-5 rounded-2xl bg-brand-50 border border-brand-200 text-center space-y-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-brand-500 text-white mx-auto shadow-brand-orange">
+              <div className="p-5 rounded-2xl bg-primary/10 border border-primary/20 text-center space-y-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white mx-auto shadow-brand-orange">
                   <CheckCircle2 className="h-7 w-7" />
                 </div>
-                <h3 className="text-lg font-bold text-brand-900">
+                <h3 className="text-lg font-bold text-gray-900">
                   Recovery Code Sent!
                 </h3>
-                <p className="text-xs text-brand-800 leading-relaxed">
+                <p className="text-xs text-gray-700 leading-relaxed">
                   We've emailed a 6-digit security verification code to{" "}
                   <span className="font-bold underline">{email}</span>.
                 </p>
@@ -143,7 +141,7 @@ export default function ForgotPasswordPage({
               {onSwitchToReset ? (
                 <button
                   onClick={onSwitchToReset}
-                  className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                   <span>Proceed to Enter OTP Code</span>
                   <ArrowRight className="h-4 w-4" />
@@ -151,7 +149,7 @@ export default function ForgotPasswordPage({
               ) : (
                 <Link
                   href="/reset-password"
-                  className="w-full py-4 px-6 rounded-2xl bg-brand-500 hover:bg-brand-600 active:bg-brand-700 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2"
+                  className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
                   <span>Proceed to Enter OTP Code</span>
                   <ArrowRight className="h-4 w-4" />
@@ -161,13 +159,13 @@ export default function ForgotPasswordPage({
               <div className="flex items-center justify-between text-xs text-gray-500 pt-2">
                 <span>Didn't receive the email?</span>
                 {resendTimer > 0 ? (
-                  <span className="font-medium text-brand-700">
+                  <span className="font-medium text-primary">
                     Resend in {resendTimer}s
                   </span>
                 ) : (
                   <button
                     onClick={handleSubmit}
-                    className="font-bold text-brand-600 hover:underline flex items-center gap-1"
+                    className="font-bold text-primary hover:underline flex items-center gap-1"
                   >
                     <RefreshCw className="h-3.5 w-3.5" /> Resend Code
                   </button>
@@ -180,3 +178,4 @@ export default function ForgotPasswordPage({
     </div>
   );
 }
+
