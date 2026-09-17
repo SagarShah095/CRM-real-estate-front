@@ -1,4 +1,5 @@
-import ResetPasswordPage from "@/components/ResetPasswordPage";
+import { Suspense } from "react";
+import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
 
 export const metadata = {
   title: "Reset Password | Shiv Pooja Residency CRM",
@@ -8,8 +9,11 @@ export const metadata = {
 export default function Page() {
   return (
     <main className="min-h-screen w-full bg-brand-surface flex flex-col justify-center py-8 relative">
-      <ResetPasswordPage />
+      <Suspense fallback={<div className="text-center text-sm text-gray-500 py-10">Loading password reset form...</div>}>
+        <ResetPasswordPage />
+      </Suspense>
     </main>
   );
 }
+
 

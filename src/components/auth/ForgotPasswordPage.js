@@ -2,17 +2,14 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { authService } from "@/services/auth.service";
 import {
-  Building2,
   Mail,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
-  ShieldAlert,
+  AlertCircle,
   Send,
-  KeyRound,
-  RefreshCw,
-  Sparkles,
 } from "lucide-react";
 
 export default function ForgotPasswordPage({
@@ -22,39 +19,47 @@ export default function ForgotPasswordPage({
   const [email, setEmail] = useState("");
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
+  const [responseMessage, setResponseMessage] = useState("");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!email) return;
+    setErrorMessage("");
+    setResponseMessage("");
+
+    if (!email) {
+      setErrorMessage("Please enter your registered email address.");
+      return;
+    }
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      setIsSubmitted(true);
-      startResendCountdown();
-    }, 1200);
-  };
 
-  const startResendCountdown = () => {
-    setResendTimer(60);
-    const interval = setInterval(() => {
-      setResendTimer((prev) => {
-        if (prev <= 1) {
-          clearInterval(interval);
-          return 0;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+    try {
+      const result = await authService.forgotPassword({ email });
+
+      if (result.success) {
+        setResponseMessage(
+          result.message ||
+            "If that email exists, a password reset link has been dispatched."
+        );
+        setIsSubmitted(true);
+      } else {
+        setErrorMessage(
+          result.error || "Failed to process request. Please try again."
+        );
+      }
+    } catch (err) {
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
-    <div className="w-fit max-w-5xl mx-auto my-auto p-4 sm:p-6 lg:p-8">
-      {/* RIGHT COLUMN: Form Area */}
-      <div className="lg:col-span-7 rounded-2xl p-6 sm:p-10 lg:p-12 flex flex-col justify-center bg-brand-card shadow-2xl border border-primary/20">
-        <div className="max-w-md w-full mx-auto space-y-6">
-          {/* Top Back Navigation Link */}
+    <div className="w-full max-w-md mx-auto my-auto p-4 sm:p-6">
+      <div className="rounded-3xl p-6 sm:p-8 lg:p-10 flex flex-col justify-center bg-brand-card shadow-2xl border border-primary/20">
+        <div className="w-full space-y-6">
+          {/* Back link */}
           <div>
             {onSwitchToLogin ? (
               <button
@@ -75,13 +80,20 @@ export default function ForgotPasswordPage({
             )}
 
             <h2 className="text-2xl sm:text-3xl font-extrabold text-brand-text">
-              Reset Password Request
+              Forgot Password
             </h2>
-            <p className="text-sm text-brand-muted mt-2">
-              Provide your registered email address below to receive password
-              recovery instructions.
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Provide your registered email address below to receive password recovery instructions.
             </p>
           </div>
+
+          {/* Error Alert */}
+          {errorMessage && (
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium animate-in fade-in">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="break-words">{errorMessage}</div>
+            </div>
+          )}
 
           {!isSubmitted ? (
             <form onSubmit={handleSubmit} className="space-y-5">
@@ -97,9 +109,10 @@ export default function ForgotPasswordPage({
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="name@shivpooja-residency.com"
+                    placeholder="sagarshah8090@apex.com"
                     required
-                    className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all"
+                    disabled={isLoading}
+                    className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all disabled:bg-gray-50"
                   />
                 </div>
               </div>
@@ -107,34 +120,33 @@ export default function ForgotPasswordPage({
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70"
+                className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
               >
                 {isLoading ? (
                   <>
                     <div className="h-4 w-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
-                    <span>Sending Security Code...</span>
+                    <span>Sending Request...</span>
                   </>
                 ) : (
                   <>
-                    <span>Send Recovery Code</span>
+                    <span>Send Reset Link</span>
                     <Send className="h-4 w-4" />
                   </>
                 )}
               </button>
             </form>
           ) : (
-            /* Success Confirmation View */
+            /* Success Response View */
             <div className="space-y-6 animate-in fade-in zoom-in-95 duration-200">
-              <div className="p-5 rounded-2xl bg-primary/10 border border-primary/20 text-center space-y-3">
-                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white mx-auto shadow-brand-orange">
+              <div className="p-5 rounded-2xl bg-emerald-50 border border-emerald-200 text-center space-y-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-600 text-white mx-auto">
                   <CheckCircle2 className="h-7 w-7" />
                 </div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Recovery Code Sent!
+                <h3 className="text-base font-bold text-emerald-900">
+                  Request Dispatched
                 </h3>
-                <p className="text-xs text-gray-700 leading-relaxed">
-                  We've emailed a 6-digit security verification code to{" "}
-                  <span className="font-bold underline">{email}</span>.
+                <p className="text-xs text-emerald-800 leading-relaxed">
+                  {responseMessage}
                 </p>
               </div>
 
@@ -143,7 +155,7 @@ export default function ForgotPasswordPage({
                   onClick={onSwitchToReset}
                   className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <span>Proceed to Enter OTP Code</span>
+                  <span>Proceed to Reset Password</span>
                   <ArrowRight className="h-4 w-4" />
                 </button>
               ) : (
@@ -151,26 +163,10 @@ export default function ForgotPasswordPage({
                   href="/reset-password"
                   className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2"
                 >
-                  <span>Proceed to Enter OTP Code</span>
+                  <span>Proceed to Reset Password</span>
                   <ArrowRight className="h-4 w-4" />
                 </Link>
               )}
-
-              <div className="flex items-center justify-between text-xs text-gray-500 pt-2">
-                <span>Didn't receive the email?</span>
-                {resendTimer > 0 ? (
-                  <span className="font-medium text-primary">
-                    Resend in {resendTimer}s
-                  </span>
-                ) : (
-                  <button
-                    onClick={handleSubmit}
-                    className="font-bold text-primary hover:underline flex items-center gap-1"
-                  >
-                    <RefreshCw className="h-3.5 w-3.5" /> Resend Code
-                  </button>
-                )}
-              </div>
             </div>
           )}
         </div>
@@ -178,4 +174,3 @@ export default function ForgotPasswordPage({
     </div>
   );
 }
-

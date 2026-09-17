@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/hooks/useAuth";
 import {
   Mail,
   Lock,
@@ -9,9 +11,13 @@ import {
   EyeOff,
   ArrowRight,
   CheckCircle2,
+  AlertCircle,
 } from "lucide-react";
 
 export default function LoginPage({ onSwitchToForgot }) {
+  const router = useRouter();
+  const { login } = useAuth();
+
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -20,7 +26,7 @@ export default function LoginPage({ onSwitchToForgot }) {
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
 
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
@@ -31,16 +37,31 @@ export default function LoginPage({ onSwitchToForgot }) {
     }
 
     setIsLoading(true);
-    // Simulate authentication API call
-    setTimeout(() => {
+
+    try {
+      const result = await login({ email, password });
+
+      if (result.success) {
+        const destPath = result.redirectPath || "/dashboard";
+        setSuccessMessage(`Login successful! Redirecting to ${destPath}...`);
+
+        setTimeout(() => {
+          router.push(destPath);
+        }, 1000);
+      } else {
+        setErrorMessage(
+          result.error || "Login failed. Please check your credentials."
+        );
+      }
+    } catch (err) {
+      setErrorMessage("An unexpected error occurred. Please try again.");
+    } finally {
       setIsLoading(false);
-      setSuccessMessage("Sign in successful! Redirecting...");
-    }, 1200);
+    }
   };
 
   return (
     <div className="w-full max-w-md mx-auto my-auto p-4 sm:p-6">
-      {/* Main Clean Card Container */}
       <div className="rounded-3xl bg-brand-card shadow-2xl border border-primary/20 p-6 sm:p-8 lg:p-10">
         <div className="space-y-6">
           {/* Header */}
@@ -48,9 +69,12 @@ export default function LoginPage({ onSwitchToForgot }) {
             <h2 className="text-2xl sm:text-3xl font-extrabold text-brand-text tracking-tight">
               Sign In
             </h2>
+            <p className="text-xs sm:text-sm text-gray-500 mt-1">
+              Shiv Pooja Residency Real Estate CRM
+            </p>
           </div>
 
-          {/* Notifications / Alerts */}
+          {/* Success Banner */}
           {successMessage && (
             <div className="flex items-center gap-3 p-4 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-sm font-medium animate-in fade-in">
               <CheckCircle2 className="h-5 w-5 text-emerald-600 shrink-0" />
@@ -58,14 +82,15 @@ export default function LoginPage({ onSwitchToForgot }) {
             </div>
           )}
 
+          {/* Error Banner */}
           {errorMessage && (
-            <div className="flex items-center gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium animate-in fade-in">
-              <div className="h-2 w-2 rounded-full bg-red-500 shrink-0" />
-              <span>{errorMessage}</span>
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-sm font-medium animate-in fade-in">
+              <AlertCircle className="h-5 w-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="break-words">{errorMessage}</div>
             </div>
           )}
 
-          {/* Login Form */}
+          {/* Form */}
           <form onSubmit={handleLogin} className="space-y-5">
             {/* Email Field */}
             <div>
@@ -82,7 +107,8 @@ export default function LoginPage({ onSwitchToForgot }) {
                   onChange={(e) => setEmail(e.target.value)}
                   placeholder="name@example.com"
                   required
-                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all"
+                  disabled={isLoading}
+                  className="w-full pl-11 pr-4 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all disabled:bg-gray-50"
                 />
               </div>
             </div>
@@ -120,7 +146,8 @@ export default function LoginPage({ onSwitchToForgot }) {
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   required
-                  className="w-full pl-11 pr-12 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all"
+                  disabled={isLoading}
+                  className="w-full pl-11 pr-12 py-3.5 rounded-2xl border border-gray-200 bg-white text-sm font-medium text-gray-900 placeholder-gray-400 focus:outline-none focus:border-primary focus:ring-4 focus:ring-primary/20 transition-all disabled:bg-gray-50"
                 />
                 <button
                   type="button"
@@ -160,7 +187,7 @@ export default function LoginPage({ onSwitchToForgot }) {
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed"
+              className="w-full py-4 px-6 rounded-2xl bg-primary hover:opacity-90 active:opacity-100 text-white font-bold text-sm shadow-brand-orange hover:shadow-lg transition-all flex items-center justify-center gap-2 transform hover:-translate-y-0.5 disabled:opacity-70 disabled:cursor-not-allowed cursor-pointer"
             >
               {isLoading ? (
                 <>
@@ -180,4 +207,3 @@ export default function LoginPage({ onSwitchToForgot }) {
     </div>
   );
 }
-

@@ -1,28 +1,16 @@
 "use client";
 
-import { useState } from "react";
-import Link from "next/link";
-import LoginPage from "@/components/LoginPage";
-import ForgotPasswordPage from "@/components/ForgotPasswordPage";
-import ResetPasswordPage from "@/components/ResetPasswordPage";
-import {
-  Building2,
-  LogIn,
-  KeyRound,
-  ShieldCheck,
-  Sparkles,
-  ExternalLink,
-  Layers,
-  Palette,
-} from "lucide-react";
+import { useState, Suspense } from "react";
+import LoginPage from "@/components/auth/LoginPage";
+import ForgotPasswordPage from "@/components/auth/ForgotPasswordPage";
+import ResetPasswordPage from "@/components/auth/ResetPasswordPage";
+import { Palette } from "lucide-react";
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState("login");
 
   return (
     <div className="min-h-screen bg-brand-surface text-brand-text flex flex-col justify-between selection:bg-brand-500 selection:text-white relative">
-      {/* TOP BRANDING & TAB SWITCHER BAR */}
-
       {/* DYNAMIC CONTENT AREA */}
       <main className="flex-1 flex items-center justify-center py-6 sm:py-10 px-4">
         {activeTab === "login" && (
@@ -37,7 +25,9 @@ export default function Home() {
         )}
 
         {activeTab === "reset" && (
-          <ResetPasswordPage onSwitchToLogin={() => setActiveTab("login")} />
+          <Suspense fallback={<div className="text-center text-sm text-gray-500 py-10">Loading...</div>}>
+            <ResetPasswordPage onSwitchToLogin={() => setActiveTab("login")} />
+          </Suspense>
         )}
       </main>
 
@@ -55,13 +45,10 @@ export default function Home() {
             </span>
           </div>
           <div>
-            © {new Date().getFullYear()} Shiv Pooja Residency CRM Portal. All
-            rights reserved.
+            © {new Date().getFullYear()} Shiv Pooja Residency CRM Portal. All rights reserved.
           </div>
         </div>
       </footer>
-
-      {/* FLOATING THEME CONTROL ENGINE */}
     </div>
   );
 }
