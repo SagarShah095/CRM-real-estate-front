@@ -1,5 +1,4 @@
-import { apiFetch } from "@/services/api";
-import { API_ENDPOINTS } from "@/config/api.config";
+import { login, forgotPassword, resetPassword } from "@/services/api";
 import { storage } from "@/utils/storage";
 import { parseApiError } from "@/utils/errorHandler";
 
@@ -15,41 +14,49 @@ export const authService = {
    */
   login: async ({ email, password }) => {
     try {
-      const response = await apiFetch(API_ENDPOINTS.AUTH.LOGIN, {
-        method: "POST",
-        body: { email, password },
-      });
+      const response = await login({ email, password });
 
-      // Extract token and user details from backend response format
-      // Support various common backend payload structures (data.token, token, data.accessToken, etc.)
-      const data = response?.data || response;
-      const token = data?.token || data?.accessToken || response?.token || response?.accessToken;
-      const user = data?.user || response?.user || data;
-      
-      // Determine role from user object or top level
-      const role =
-        user?.role ||
-        data?.role ||
-        response?.role ||
-        (user?.isSuperAdmin ? "super-admin" : user?.isAdmin ? "admin" : "user");
+      if (response?.success) {
+        const data = response?.data || response;
+        const token =
+          data?.token ||
+          data?.accessToken ||
+          response?.token ||
+          response?.accessToken;
+        const user = data?.user || response?.user || data;
 
-      // Save session into storage
-      if (token) {
-        storage.setToken(token);
+        const role =
+          user?.role ||
+          data?.role ||
+          response?.role ||
+          (user?.isSuperAdmin
+            ? "super-admin"
+            : user?.isAdmin
+              ? "admin"
+              : "user");
+
+        if (token) {
+          storage.setToken(token);
+        }
+        if (user) {
+          storage.setUser(user);
+        }
+
+        const redirectPath = authService.getRoleRedirectPath(role);
+
+        return {
+          success: true,
+          user,
+          token,
+          role,
+          redirectPath,
+          rawResponse: response,
+        };
       }
-      if (user) {
-        storage.setUser(user);
-      }
-
-      const redirectPath = authService.getRoleRedirectPath(role);
 
       return {
-        success: true,
-        user,
-        token,
-        role,
-        redirectPath,
-        rawResponse: response,
+        success: false,
+        error: parseApiError(response),
       };
     } catch (error) {
       console.error("[authService.login Error]:", error);
@@ -67,17 +74,21 @@ export const authService = {
    */
   forgotPassword: async ({ email }) => {
     try {
-      const response = await apiFetch(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, {
-        method: "POST",
-        body: { email },
-      });
+      const response = await forgotPassword({ email });
+
+      if (response?.success !== false && !response?.error) {
+        return {
+          success: true,
+          message:
+            response?.message ||
+            "If that email exists, a password reset link has been dispatched.",
+          data: response?.data || null,
+        };
+      }
 
       return {
-        success: response?.success !== false,
-        message:
-          response?.message ||
-          "If that email exists, a password reset link has been dispatched.",
-        data: response?.data || null,
+        success: false,
+        error: parseApiError(response),
       };
     } catch (error) {
       console.error("[authService.forgotPassword Error]:", error);
@@ -95,17 +106,21 @@ export const authService = {
    */
   resetPassword: async ({ token, newPassword }) => {
     try {
-      const response = await apiFetch(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
-        method: "POST",
-        body: { token, newPassword },
-      });
+      const response = await resetPassword({ token, newPassword });
+
+      if (response?.success !== false && !response?.error) {
+        return {
+          success: true,
+          message:
+            response?.message ||
+            "Password has been reset successfully. You can now log in.",
+          data: response?.data || null,
+        };
+      }
 
       return {
-        success: response?.success !== false,
-        message:
-          response?.message ||
-          "Password has been reset successfully. You can now log in.",
-        data: response?.data || null,
+        success: false,
+        error: parseApiError(response),
       };
     } catch (error) {
       console.error("[authService.resetPassword Error]:", error);
@@ -118,11 +133,11 @@ export const authService = {
 
   /**
    * Resolves the navigation route according to user role.
-   * @param {string} role 
+   * @param {string} role
    * @returns {string} Route path
    */
   getRoleRedirectPath: (role) => {
-    if (!role) return "/dashboard";
+    if (!role) return "/login";
     const normalizedRole = String(role).toLowerCase().trim().replace(/_/g, "-");
 
     if (
@@ -133,11 +148,7 @@ export const authService = {
       return "/super-admin";
     }
 
-    if (normalizedRole === "admin") {
-      return "/admin";
-    }
-
-    return "/dashboard";
+    return "/login";
   },
 
   /**

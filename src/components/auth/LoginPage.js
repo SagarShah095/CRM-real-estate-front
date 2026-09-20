@@ -40,17 +40,25 @@ export default function LoginPage({ onSwitchToForgot }) {
 
     try {
       const result = await login({ email, password });
+      console.log(result, "result");
 
       if (result.success) {
         const destPath = result.redirectPath || "/dashboard";
         setSuccessMessage(`Login successful! Redirecting to ${destPath}...`);
-
+        localStorage.setItem(
+          "token",
+          result?.rawResponse?.data?.tokens?.accessToken,
+        );
+        console.log(
+          result?.rawResponse?.data?.tokens?.accessToken,
+          "result?.data?.tokens?.accessToken",
+        );
         setTimeout(() => {
           router.push(destPath);
         }, 1000);
       } else {
         setErrorMessage(
-          result.error || "Login failed. Please check your credentials."
+          result.error || "Login failed. Please check your credentials.",
         );
       }
     } catch (err) {
