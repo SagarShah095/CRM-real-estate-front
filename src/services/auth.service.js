@@ -1,17 +1,97 @@
-import { login, forgotPassword, resetPassword } from "@/services/api";
+import axios from "./apiClient";
+import { API_BASE_URL, API_ENDPOINTS } from "@/config/api.config";
 import { storage } from "@/utils/storage";
 import { parseApiError } from "@/utils/errorHandler";
+
+const AUTH_ENDPOINTS = API_ENDPOINTS.AUTH || {
+  LOGIN: "/api/v1/auth/login",
+  FORGOT_PASSWORD: "/api/v1/auth/forgot-password",
+  RESET_PASSWORD: "/api/v1/auth/reset-password",
+};
+
+/**
+ * Raw Login API Call
+ */
+export const login = async (data) => {
+  try {
+    const payload = data?.data || data;
+    const res = await axios.post(`${API_BASE_URL}${AUTH_ENDPOINTS.LOGIN}`, payload, {
+      withCredentials: true,
+    });
+    if (res?.data?.success) {
+      const token =
+        res.data.data?.token ||
+        res.data.token ||
+        res.data.data?.accessToken ||
+        res.data.accessToken ||
+        res.data.data?.tokens?.accessToken ||
+        res.data.tokens?.accessToken;
+      const user = res.data.data?.user || res.data.user;
+
+      if (token) storage.setToken(token);
+      if (user) storage.setUser(user);
+      return res.data;
+    }
+    return res.data;
+  } catch (error) {
+    return (
+      error.response?.data || {
+        success: false,
+        message: error.message || "Login failed",
+      }
+    );
+  }
+};
+
+/**
+ * Raw Forgot Password API Call
+ */
+export const forgotPassword = async (data) => {
+  try {
+    const payload = data?.data || data;
+    const res = await axios.post(
+      `${API_BASE_URL}${AUTH_ENDPOINTS.FORGOT_PASSWORD}`,
+      payload,
+      { withCredentials: true },
+    );
+    return res.data;
+  } catch (error) {
+    return (
+      error.response?.data || {
+        success: false,
+        message: error.message || "Forgot password request failed",
+      }
+    );
+  }
+};
+
+/**
+ * Raw Reset Password API Call
+ */
+export const resetPassword = async (data) => {
+  try {
+    const payload = data?.data || data;
+    const res = await axios.post(
+      `${API_BASE_URL}${AUTH_ENDPOINTS.RESET_PASSWORD}`,
+      payload,
+      { withCredentials: true },
+    );
+    return res.data;
+  } catch (error) {
+    return (
+      error.response?.data || {
+        success: false,
+        message: error.message || "Reset password request failed",
+      }
+    );
+  }
+};
 
 /**
  * Authentication Service Module
  * Handles all API calls for Login, Forgot Password, Reset Password, and Role Redirection logic.
  */
 export const authService = {
-  /**
-   * Login API call
-   * @param {Object} credentials { email, password }
-   * @returns {Promise<Object>} { user, token, role, redirectPath }
-   */
   login: async ({ email, password }) => {
     try {
       const response = await login({ email, password });
@@ -19,8 +99,10 @@ export const authService = {
       if (response?.success) {
         const data = response?.data || response;
         const token =
+          data?.tokens?.accessToken ||
           data?.token ||
           data?.accessToken ||
+          response?.tokens?.accessToken ||
           response?.token ||
           response?.accessToken;
         const user = data?.user || response?.user || data;
@@ -28,6 +110,7 @@ export const authService = {
         const role =
           user?.role ||
           data?.role ||
+          data?.portal ||
           response?.role ||
           (user?.isSuperAdmin
             ? "super-admin"
@@ -67,11 +150,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Forgot Password API call
-   * @param {Object} payload { email }
-   * @returns {Promise<Object>} { success, message, data }
-   */
   forgotPassword: async ({ email }) => {
     try {
       const response = await forgotPassword({ email });
@@ -99,11 +177,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Reset Password API call
-   * @param {Object} payload { token, newPassword }
-   * @returns {Promise<Object>} { success, message, data }
-   */
   resetPassword: async ({ token, newPassword }) => {
     try {
       const response = await resetPassword({ token, newPassword });
@@ -131,11 +204,6 @@ export const authService = {
     }
   },
 
-  /**
-   * Resolves the navigation route according to user role.
-   * @param {string} role
-   * @returns {string} Route path
-   */
   getRoleRedirectPath: (role) => {
     if (!role) return "/login";
     const normalizedRole = String(role).toLowerCase().trim().replace(/_/g, "-");
@@ -145,16 +213,25 @@ export const authService = {
       normalizedRole === "superadmin" ||
       normalizedRole === "super_admin"
     ) {
-      return "/super-admin";
+      return "/super-admin/dashboard";
     }
 
-    return "/login";
+    if (
+      normalizedRole === "admin" ||
+      normalizedRole === "administrator" ||
+      normalizedRole === "tenant-admin" ||
+      normalizedRole === "sub-admin" ||
+      normalizedRole === "sub_admin"
+    ) {
+      return "/admin/dashboard";
+    }
+
+    return "/dashboard";
   },
 
-  /**
-   * Logout helper
-   */
   logout: () => {
     storage.clearAuth();
   },
 };
+
+export default authService;

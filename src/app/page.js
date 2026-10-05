@@ -14,7 +14,9 @@ export default function Home() {
       {/* DYNAMIC CONTENT AREA */}
       <main className="flex-1 flex items-center justify-center py-6 sm:py-10 px-4">
         {activeTab === "login" && (
-          <LoginPage onSwitchToForgot={() => setActiveTab("forgot")} />
+          <Suspense fallback={<div className="text-center text-sm text-gray-500 py-10">Loading...</div>}>
+            <LoginPage onSwitchToForgot={() => setActiveTab("forgot")} />
+          </Suspense>
         )}
 
         {activeTab === "forgot" && (

@@ -7,9 +7,35 @@ import Cookies from "js-cookie";
 const TOKEN_KEY = "token";
 const USER_KEY = "auth_user";
 
+/**
+ * Checks if a JWT token is expired
+ */
+export function isTokenExpired(token) {
+  if (!token || typeof token !== "string") return true;
+  try {
+    const parts = token.split(".");
+    if (parts.length !== 3) return false;
+    const base64Url = parts[1];
+    const base64 = base64Url.replace(/-/g, "+").replace(/_/g, "/");
+    const jsonPayload = decodeURIComponent(
+      atob(base64)
+        .split("")
+        .map((c) => "%" + ("00" + c.charCodeAt(0).toString(16)).slice(-2))
+        .join(""),
+    );
+    const payload = JSON.parse(jsonPayload);
+    if (!payload.exp) return false;
+    const currentTimeSeconds = Math.floor(Date.now() / 1000);
+    return payload.exp <= currentTimeSeconds + 5;
+  } catch {
+    return false;
+  }
+}
+
 export const storage = {
   /**
    * Retrieve token (Primary: Browser Cookie via js-cookie, Fallback: LocalStorage)
+   * Validates expiration and clears storage if expired.
    */
   getToken: () => {
     if (typeof window === "undefined") return null;
@@ -20,23 +46,33 @@ export const storage = {
         Cookies.get("auth_token") ||
         Cookies.get("userSession");
 
-      if (cookieToken) return cookieToken;
+      let token = cookieToken;
 
-      const value =
-        localStorage.getItem(TOKEN_KEY) ||
-        localStorage.getItem("auth_token") ||
-        localStorage.getItem("userSession");
-      if (!value) return null;
-
-      if (typeof value === "string" && value.trim().startsWith("{")) {
-        try {
-          const parsed = JSON.parse(value);
-          return parsed.token || parsed.accessToken || value;
-        } catch {
-          return value;
+      if (!token) {
+        const value =
+          localStorage.getItem(TOKEN_KEY) ||
+          localStorage.getItem("auth_token") ||
+          localStorage.getItem("userSession");
+        if (value) {
+          if (typeof value === "string" && value.trim().startsWith("{")) {
+            try {
+              const parsed = JSON.parse(value);
+              token = parsed.token || parsed.accessToken || value;
+            } catch {
+              token = value;
+            }
+          } else {
+            token = value;
+          }
         }
       }
-      return value;
+
+      if (token && isTokenExpired(token)) {
+        storage.clearAuth();
+        return null;
+      }
+
+      return token || null;
     } catch {
       return null;
     }
@@ -84,9 +120,21 @@ export const storage = {
         }
 
         // Store in cookies (7 days expiry, SameSite Lax)
-        Cookies.set(TOKEN_KEY, tokenStr, { expires: 7, path: "/", sameSite: "Lax" });
-        Cookies.set("access_token", tokenStr, { expires: 7, path: "/", sameSite: "Lax" });
-        Cookies.set("auth_token", tokenStr, { expires: 7, path: "/", sameSite: "Lax" });
+        Cookies.set(TOKEN_KEY, tokenStr, {
+          expires: 7,
+          path: "/",
+          sameSite: "Lax",
+        });
+        Cookies.set("access_token", tokenStr, {
+          expires: 7,
+          path: "/",
+          sameSite: "Lax",
+        });
+        Cookies.set("auth_token", tokenStr, {
+          expires: 7,
+          path: "/",
+          sameSite: "Lax",
+        });
 
         // Sync with LocalStorage
         localStorage.setItem(TOKEN_KEY, tokenStr);
