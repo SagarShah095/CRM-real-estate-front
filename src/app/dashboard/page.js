@@ -1,12 +1,44 @@
 "use client";
 
+import { useEffect } from "react";
 import { useAuth } from "@/hooks/useAuth";
 import { useRouter } from "next/navigation";
+import { storage } from "@/utils/storage";
 import { LayoutDashboard, LogOut, User, CheckCircle } from "lucide-react";
 
 export default function DashboardPage() {
   const { user, role, logout } = useAuth();
   const router = useRouter();
+
+  // Role guard: redirect admin / super-admin to their respective dashboards
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const storedUser = user || storage.getUser();
+    if (storedUser) {
+      const roleStr = String(storedUser?.role || role || "")
+        .toLowerCase()
+        .trim()
+        .replace(/_/g, "-");
+
+      if (
+        roleStr === "admin" ||
+        roleStr === "administrator" ||
+        roleStr === "tenant-admin" ||
+        roleStr === "sub-admin" ||
+        roleStr === "sub_admin" ||
+        Boolean(storedUser?.isAdmin)
+      ) {
+        router.replace("/admin");
+      } else if (
+        roleStr === "super-admin" ||
+        roleStr === "superadmin" ||
+        roleStr === "super_admin" ||
+        Boolean(storedUser?.isSuperAdmin)
+      ) {
+        router.replace("/super-admin");
+      }
+    }
+  }, [user, role, router]);
 
   const handleLogout = () => {
     logout();

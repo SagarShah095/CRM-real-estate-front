@@ -1,9 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { useAuth } from "@/hooks/useAuth";
+import { storage } from "@/utils/storage";
+import { isTokenExpired } from "@/utils/token";
+import { authService } from "@/services/auth.service";
 import {
   Mail,
   Lock,
@@ -12,11 +15,16 @@ import {
   ArrowRight,
   CheckCircle2,
   AlertCircle,
+  Clock,
 } from "lucide-react";
 
 export default function LoginPage({ onSwitchToForgot }) {
   const router = useRouter();
-  const { login } = useAuth();
+  const searchParams = useSearchParams();
+  const { login, user, isAuthenticated } = useAuth();
+
+  const isExpiredParam = searchParams.get("expired") === "true";
+  const redirectParam = searchParams.get("redirect");
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -25,6 +33,33 @@ export default function LoginPage({ onSwitchToForgot }) {
   const [isLoading, setIsLoading] = useState(false);
   const [successMessage, setSuccessMessage] = useState("");
   const [errorMessage, setErrorMessage] = useState("");
+
+  // Auto-redirect only if user has a valid unexpired token
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const savedToken = storage.getToken();
+    const savedUser = user || storage.getUser();
+
+    if (savedToken && !isTokenExpired(savedToken) && savedUser) {
+      if (
+        redirectParam &&
+        redirectParam.startsWith("/") &&
+        !redirectParam.includes("/login")
+      ) {
+        router.replace(redirectParam);
+        return;
+      }
+      const userRole =
+        savedUser?.role ||
+        (savedUser?.isSuperAdmin
+          ? "super-admin"
+          : savedUser?.isAdmin
+            ? "admin"
+            : "user");
+      const destPath = authService.getRoleRedirectPath(userRole);
+      router.replace(destPath);
+    }
+  }, [user, router, redirectParam]);
 
   const handleLogin = async (e) => {
     e.preventDefault();
@@ -40,22 +75,24 @@ export default function LoginPage({ onSwitchToForgot }) {
 
     try {
       const result = await login({ email, password });
-      console.log(result, "result");
 
       if (result.success) {
-        const destPath = result.redirectPath || "/dashboard";
-        setSuccessMessage(`Login successful! Redirecting to ${destPath}...`);
-        localStorage.setItem(
-          "token",
-          result?.rawResponse?.data?.tokens?.accessToken,
-        );
-        console.log(
-          result?.rawResponse?.data?.tokens?.accessToken,
-          "result?.data?.tokens?.accessToken",
-        );
+        let destPath = result.redirectPath || "/dashboard";
+
+        if (
+          redirectParam &&
+          redirectParam.startsWith("/") &&
+          !redirectParam.includes("/login")
+        ) {
+          destPath = redirectParam;
+        } else if (destPath === "/admin") {
+          destPath = "/admin/dashboard";
+        }
+
+        setSuccessMessage(`Login successful! Redirecting...`);
         setTimeout(() => {
           router.push(destPath);
-        }, 1000);
+        }, 700);
       } else {
         setErrorMessage(
           result.error || "Login failed. Please check your credentials.",
@@ -81,6 +118,16 @@ export default function LoginPage({ onSwitchToForgot }) {
               Shiv Pooja Residency Real Estate CRM
             </p>
           </div>
+
+          {/* Session Expired Banner */}
+          {isExpiredParam && !errorMessage && !successMessage && (
+            <div className="flex items-center gap-3 p-3.5 rounded-2xl bg-amber-500/10 border border-amber-500/30 text-amber-800 text-xs font-semibold animate-in fade-in duration-200">
+              <Clock className="h-4 w-4 text-amber-600 shrink-0" />
+              <span>
+                Your session has expired. Please sign in again to continue.
+              </span>
+            </div>
+          )}
 
           {/* Success Banner */}
           {successMessage && (

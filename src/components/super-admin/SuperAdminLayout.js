@@ -142,15 +142,19 @@ export default function SuperAdminLayout({
                       }`}
                     >
                       <div className="flex items-center gap-3">
-                        <Icon className={`h-4 w-4 ${isActive ? "text-amber-400" : "text-slate-400"}`} />
+                        <Icon
+                          className={`h-4 w-4 ${isActive ? "text-amber-400" : "text-slate-400"}`}
+                        />
                         <span>{item.name}</span>
                       </div>
                       {item.badge !== undefined && (
-                        <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
-                          isActive
-                            ? "bg-slate-700 text-slate-200"
-                            : "bg-slate-800/80 text-slate-400"
-                        }`}>
+                        <span
+                          className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${
+                            isActive
+                              ? "bg-slate-700 text-slate-200"
+                              : "bg-slate-800/80 text-slate-400"
+                          }`}
+                        >
                           {item.badge.toLocaleString()}
                         </span>
                       )}
@@ -179,7 +183,9 @@ export default function SuperAdminLayout({
                           : "text-slate-400 hover:text-slate-200 hover:bg-slate-800/50"
                       }`}
                     >
-                      <Icon className={`h-4 w-4 ${isActive ? "text-amber-400" : "text-slate-400"}`} />
+                      <Icon
+                        className={`h-4 w-4 ${isActive ? "text-amber-400" : "text-slate-400"}`}
+                      />
                       <span>{item.name}</span>
                     </Link>
                   );

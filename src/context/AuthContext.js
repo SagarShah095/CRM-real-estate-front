@@ -4,6 +4,8 @@ import { createContext, useContext, useState, useEffect } from "react";
 import { storage } from "@/utils/storage";
 import { authService } from "@/services/auth.service";
 
+import { isTokenExpired, triggerTokenExpiredRedirect } from "@/utils/token";
+
 const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
@@ -17,12 +19,54 @@ export function AuthProvider({ children }) {
     const savedUser = storage.getUser();
 
     if (savedToken) {
-      setToken(savedToken);
-    }
-    if (savedUser) {
-      setUser(savedUser);
+      if (isTokenExpired(savedToken)) {
+        storage.clearAuth();
+        setUser(null);
+        setToken(null);
+        triggerTokenExpiredRedirect("Your session has expired. Please log in again.");
+      } else {
+        setToken(savedToken);
+        if (savedUser) {
+          setUser(savedUser);
+        }
+      }
+    } else {
+      setUser(null);
+      setToken(null);
     }
     setIsLoading(false);
+
+    // Listen for custom auth:expired broadcast events
+    const handleAuthExpired = () => {
+      setUser(null);
+      setToken(null);
+    };
+    window.addEventListener("auth:expired", handleAuthExpired);
+
+    // Visibility change check: re-verify expiration when user returns to this browser tab
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const curToken = storage.getToken();
+        if (curToken && isTokenExpired(curToken)) {
+          triggerTokenExpiredRedirect("Your session has expired. Please log in again.");
+        }
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    // Periodic check every 30 seconds for proactive redirection on expiry
+    const intervalId = setInterval(() => {
+      const curToken = storage.getToken();
+      if (curToken && isTokenExpired(curToken)) {
+        triggerTokenExpiredRedirect("Your session has expired. Please log in again.");
+      }
+    }, 30000);
+
+    return () => {
+      window.removeEventListener("auth:expired", handleAuthExpired);
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      clearInterval(intervalId);
+    };
   }, []);
 
   const login = async (credentials) => {

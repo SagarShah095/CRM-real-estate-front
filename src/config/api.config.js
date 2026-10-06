@@ -12,6 +12,9 @@ export const API_ENDPOINTS = {
     FORGOT_PASSWORD: "/api/v1/auth/forgot-password",
     RESET_PASSWORD: "/api/v1/auth/reset-password",
   },
+  ADMINS: "/api/v1/admins",
+  USERS: "/api/v1/users",
+  PROJECTS: "/api/v1/projects",
 };
 
 export const API_CONFIG = {
