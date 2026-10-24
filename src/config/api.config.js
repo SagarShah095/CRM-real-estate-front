@@ -15,6 +15,8 @@ export const API_ENDPOINTS = {
   ADMINS: "/api/v1/admins",
   USERS: "/api/v1/users",
   PROJECTS: "/api/v1/projects",
+  TASKS: "/api/v1/tasks",
+  LEADS: "/api/v1/leads",
 };
 
 export const API_CONFIG = {

@@ -14,12 +14,16 @@ export * from "./auth.service";
 export * from "./superAdmin.service";
 export * from "./adminUsers.service";
 export * from "./projects.service";
+export * from "./tasks.service";
+export * from "./leads.service";
 
 // Default export combining all service modules
 import { authService } from "./auth.service";
 import { superAdminService } from "./superAdmin.service";
 import { adminUsersService } from "./adminUsers.service";
 import { projectsService } from "./projects.service";
+import { tasksService } from "./tasks.service";
+import { leadsService } from "./leads.service";
 import { apiFetch } from "./apiClient";
 
 export default {
@@ -28,4 +32,6 @@ export default {
   superAdmin: superAdminService,
   users: adminUsersService,
   projects: projectsService,
+  tasks: tasksService,
+  leads: leadsService,
 };
