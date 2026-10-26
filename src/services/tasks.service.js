@@ -80,34 +80,13 @@ export const getTasks = async (paramsOrToken = {}, token = null) => {
       "Content-Type": "application/json",
     };
 
-    try {
-      const res = await axios.get(`${API_BASE_URL}${TASKS_ENDPOINT}`, {
-        params: cleanParams,
-        withCredentials: true,
-        headers,
-      });
-      return res.data;
-    } catch (primaryErr) {
-      if (primaryErr.response?.status === 404) {
-        // Fallback endpoint checks
-        try {
-          const res2 = await axios.get(`${API_BASE_URL}/api/v1/task`, {
-            params: cleanParams,
-            withCredentials: true,
-            headers,
-          });
-          return res2.data;
-        } catch (e2) {
-          const res3 = await axios.get(`${API_BASE_URL}/api/v1/admin/tasks`, {
-            params: cleanParams,
-            withCredentials: true,
-            headers,
-          });
-          return res3.data;
-        }
-      }
-      throw primaryErr;
-    }
+    // Single GET API call: GET /api/v1/tasks
+    const res = await axios.get(`${API_BASE_URL}${TASKS_ENDPOINT}`, {
+      params: cleanParams,
+      withCredentials: true,
+      headers,
+    });
+    return res.data;
   } catch (error) {
     return (
       error.response?.data || {
@@ -185,32 +164,12 @@ export const createTask = async (data, token = null) => {
       "Content-Type": "application/json",
     };
 
-    try {
-      const res = await axios.post(`${API_BASE_URL}${TASKS_ENDPOINT}`, payload, {
-        withCredentials: true,
-        headers,
-      });
-      return res.data;
-    } catch (primaryErr) {
-      if (primaryErr.response?.status === 404) {
-        try {
-          const res2 = await axios.post(
-            `${API_BASE_URL}/api/v1/task`,
-            payload,
-            { withCredentials: true, headers }
-          );
-          return res2.data;
-        } catch (e2) {
-          const res3 = await axios.post(
-            `${API_BASE_URL}/api/v1/admin/tasks`,
-            payload,
-            { withCredentials: true, headers }
-          );
-          return res3.data;
-        }
-      }
-      throw primaryErr;
-    }
+    // Single POST API call: POST /api/v1/tasks
+    const res = await axios.post(`${API_BASE_URL}${TASKS_ENDPOINT}`, payload, {
+      withCredentials: true,
+      headers,
+    });
+    return res.data;
   } catch (error) {
     return (
       error.response?.data || {
@@ -266,24 +225,13 @@ export const updateTask = async (id, data, token = null) => {
       "Content-Type": "application/json",
     };
 
-    try {
-      const res = await axios.put(
-        `${API_BASE_URL}${TASKS_ENDPOINT}/${id}`,
-        data,
-        { withCredentials: true, headers }
-      );
-      return res.data;
-    } catch (putErr) {
-      if (putErr.response?.status === 404 || putErr.response?.status === 405) {
-        const patchRes = await axios.patch(
-          `${API_BASE_URL}${TASKS_ENDPOINT}/${id}`,
-          data,
-          { withCredentials: true, headers }
-        );
-        return patchRes.data;
-      }
-      throw putErr;
-    }
+    // Single PUT API call: PUT /api/v1/tasks/:id
+    const res = await axios.put(
+      `${API_BASE_URL}${TASKS_ENDPOINT}/${id}`,
+      data,
+      { withCredentials: true, headers }
+    );
+    return res.data;
   } catch (error) {
     return (
       error.response?.data || {

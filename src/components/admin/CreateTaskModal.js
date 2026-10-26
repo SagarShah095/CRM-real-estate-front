@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useId, useMemo, useEffect } from "react";
+import { useState, useId, useMemo, useEffect, useRef } from "react";
 import {
   X,
   Calendar,
@@ -108,6 +108,7 @@ export default function CreateTaskModal({
     }
     const list =
       projectsApiData?.data?.projects ||
+      projectsApiData?.data?.data ||
       projectsApiData?.data ||
       projectsApiData?.projects ||
       [];
@@ -169,6 +170,7 @@ export default function CreateTaskModal({
   const [copiedJson, setCopiedJson] = useState(false);
   const [apiStatus, setApiStatus] = useState(null); // { type: 'success' | 'error' | 'info', message: '' }
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const isSubmittingRef = useRef(false);
 
   // Exact fields according to requested schema
   const [formData, setFormData] = useState({
@@ -353,6 +355,8 @@ export default function CreateTaskModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isSubmitting || isSubmittingRef.current) return;
+    isSubmittingRef.current = true;
     setIsSubmitting(true);
     setApiStatus(null);
 
@@ -369,6 +373,7 @@ export default function CreateTaskModal({
           "The backend POST /api/v1/tasks endpoint requires a leadId that belongs to your tenant.",
       });
       if (onError) onError(msg);
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -377,6 +382,7 @@ export default function CreateTaskModal({
       const msg = "Please select a Project for this task.";
       setApiStatus({ type: "error", message: msg });
       if (onError) onError(msg);
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -385,6 +391,7 @@ export default function CreateTaskModal({
       const msg = "Please assign this task to an agent or user.";
       setApiStatus({ type: "error", message: msg });
       if (onError) onError(msg);
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
       return;
     }
@@ -474,6 +481,7 @@ export default function CreateTaskModal({
           onError(errorMsg);
         }
 
+        isSubmittingRef.current = false;
         setIsSubmitting(false);
       }
     } catch (error) {
@@ -492,6 +500,7 @@ export default function CreateTaskModal({
         onError(errorMsg);
       }
 
+      isSubmittingRef.current = false;
       setIsSubmitting(false);
     }
   };

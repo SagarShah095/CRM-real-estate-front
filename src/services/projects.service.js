@@ -53,12 +53,42 @@ export const getProjects = async (paramsOrToken = {}, token = null) => {
       "Content-Type": "application/json",
     };
 
-    const res = await axios.get(`${API_BASE_URL}${PROJECTS_ENDPOINT}`, {
-      params: cleanParams,
-      withCredentials: true,
-      headers,
-    });
-    return res.data;
+    try {
+      const res = await axios.get(`${API_BASE_URL}${PROJECTS_ENDPOINT}`, {
+        params: cleanParams,
+        withCredentials: true,
+        headers,
+      });
+      return res.data;
+    } catch (primaryErr) {
+      if (primaryErr.response?.status === 404) {
+        try {
+          const res2 = await axios.get(`${API_BASE_URL}/projects`, {
+            params: cleanParams,
+            withCredentials: true,
+            headers,
+          });
+          return res2.data;
+        } catch (e2) {
+          try {
+            const res3 = await axios.get(`${API_BASE_URL}/api/v1/project`, {
+              params: cleanParams,
+              withCredentials: true,
+              headers,
+            });
+            return res3.data;
+          } catch (e3) {
+            const res4 = await axios.get(`${API_BASE_URL}/api/v1/admin/projects`, {
+              params: cleanParams,
+              withCredentials: true,
+              headers,
+            });
+            return res4.data;
+          }
+        }
+      }
+      throw primaryErr;
+    }
   } catch (error) {
     return (
       error.response?.data || {

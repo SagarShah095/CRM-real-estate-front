@@ -231,9 +231,74 @@ export const deleteUser = async (id, token) => {
   }
 };
 
+/**
+ * Bulk Delete Users API Call
+ * POST /users/bulk-delete or /api/v1/users/bulk-delete
+ * Body: { "ids": ["id1", "id2"] }
+ */
+export const bulkDeleteUsers = async (idsOrPayload, token = null) => {
+  try {
+    const ids = Array.isArray(idsOrPayload)
+      ? idsOrPayload
+      : idsOrPayload?.ids || [];
+    const payload = { ids };
+    const authToken = token || idsOrPayload?.token || storage.getToken();
+    const headers = {
+      Authorization: `Bearer ${authToken}`,
+      "Content-Type": "application/json",
+    };
+
+    try {
+      const res = await axios.post(`${API_BASE_URL}/users/bulk-delete`, payload, {
+        withCredentials: true,
+        headers,
+      });
+      return res.data;
+    } catch (usersErr) {
+      if (usersErr.response?.status === 404 || usersErr.response?.status === 405) {
+        try {
+          const res2 = await axios.post(
+            `${API_BASE_URL}${USERS_ENDPOINT}/bulk-delete`,
+            payload,
+            { withCredentials: true, headers }
+          );
+          return res2.data;
+        } catch (e2) {
+          try {
+            const res3 = await axios.delete(`${API_BASE_URL}/users/bulk-delete`, {
+              data: payload,
+              withCredentials: true,
+              headers,
+            });
+            return res3.data;
+          } catch (e3) {
+            const res4 = await axios.delete(
+              `${API_BASE_URL}${USERS_ENDPOINT}/bulk-delete`,
+              { data: payload, withCredentials: true, headers }
+            );
+            return res4.data;
+          }
+        }
+      }
+      throw usersErr;
+    }
+  } catch (error) {
+    return (
+      error.response?.data || {
+        success: false,
+        message:
+          error.response?.data?.message ||
+          error.message ||
+          "Failed to bulk delete users",
+      }
+    );
+  }
+};
+
 export const adminUsersService = {
   getUsers,
   createUser,
   updateUser,
   deleteUser,
+  bulkDeleteUsers,
 };

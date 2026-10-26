@@ -37,6 +37,7 @@ export function useCreateTaskMutation() {
 
   return useMutation({
     mutationFn: (data) => createTask(data),
+    retry: false,
     onSuccess: (response, variables) => {
       if (response?.success !== false && !response?.error) {
         const createdTask =
@@ -80,6 +81,7 @@ export function useUpdateTaskMutation() {
 
   return useMutation({
     mutationFn: ({ id, data }) => updateTask(id, data),
+    retry: false,
     onSuccess: (response, variables) => {
       if (response?.success !== false && !response?.error) {
         const updatedTask =
@@ -125,6 +127,7 @@ export function useDeleteTaskMutation() {
 
   return useMutation({
     mutationFn: (id) => deleteTask(id),
+    retry: false,
     onSuccess: (_response, deletedId) => {
       queryClient.setQueriesData({ queryKey: ["tasks"] }, (old) => {
         if (!old) return old;
