@@ -148,8 +148,7 @@ export const createTask = async (data, token = null) => {
           : false,
       dueDate: rawPayload.dueDate || new Date().toISOString(),
       reminderTime: rawPayload.reminderTime || "15 Minute",
-      reminderMinutesBefore:
-        Number(rawPayload.reminderMinutesBefore ?? 15),
+      reminderMinutesBefore: Number(rawPayload.reminderMinutesBefore ?? 15),
       projectId: rawPayload.projectId || "",
       entityType: rawPayload.entityType || "lead",
       team: rawPayload.team || "Sales",
@@ -215,22 +214,117 @@ export const getTaskById = async (id, token = null) => {
 
 /**
  * Update Task API Call
- * PUT /api/v1/tasks/:id
+ * PATCH /api/v1/tasks/:id (or /tasks/:id)
+ *
+ * Supports partial or full task payload updates:
+ * {
+ *   title?: string,
+ *   activityType?: string,
+ *   dueDate?: string (ISO),
+ *   status?: "pending" | "completed" | "in_progress" | "cancelled" | "overdue",
+ *   isCompleted?: boolean,
+ *   remark?: string,
+ *   assignedTo?: string,
+ *   preSalesAgentId?: string,
+ *   projectId?: string,
+ *   leadId?: string,
+ *   priority?: string,
+ *   category?: string,
+ *   team?: string,
+ *   stage?: string,
+ *   remindMe?: boolean,
+ *   reminderTime?: string,
+ *   reminderMinutesBefore?: number
+ * }
+ *
+ * @param {string|number|Object} id Task ID (e.g. "tsk-123" or "64f1...") or Task Object
+ * @param {Object} data Partial or full task updates
+ * @param {string|null} token Optional Bearer token
+ * @returns {Promise<Object>} API Response
  */
-export const updateTask = async (id, data, token = null) => {
+export const updateTask = async (id, data = {}, token = null) => {
   try {
-    const authToken = token || storage.getToken();
+    const rawPayload = data?.data || data || {};
+    const authToken = token || data?.token || storage.getToken();
+
+    // Sanitize ID
+    const cleanId = String(
+      typeof id === "object" && id !== null
+        ? id.id || id._id || id.taskId
+        : id || "",
+    )
+      .replace(/^.*\/tasks\//, "")
+      .trim();
+
+    if (!cleanId) {
+      return {
+        success: false,
+        message: "A valid Task ID is required to update the task.",
+      };
+    }
+
     const headers = {
       Authorization: `Bearer ${authToken}`,
       "Content-Type": "application/json",
     };
 
-    // Single PUT API call: PUT /api/v1/tasks/:id
-    const res = await axios.put(
-      `${API_BASE_URL}${TASKS_ENDPOINT}/${id}`,
-      data,
-      { withCredentials: true, headers }
-    );
+    // Construct cleaned payload (strip undefined while preserving false, null, 0, "")
+    const payload = {};
+    Object.keys(rawPayload).forEach((key) => {
+      if (rawPayload[key] !== undefined) {
+        payload[key] = rawPayload[key];
+      }
+    });
+
+    // If dueDate is a Date object or valid date string, ensure ISO format
+    if (payload.dueDate) {
+      try {
+        const d = new Date(payload.dueDate);
+        if (!isNaN(d.getTime())) {
+          payload.dueDate = d.toISOString();
+        }
+      } catch (_) {}
+    }
+
+    // Keep isCompleted and status in sync if one is provided
+    if (
+      typeof payload.isCompleted === "boolean" &&
+      payload.status === undefined
+    ) {
+      payload.status = payload.isCompleted ? "completed" : "pending";
+    } else if (payload.status && typeof payload.isCompleted !== "boolean") {
+      if (payload.status.toLowerCase() === "completed") {
+        payload.isCompleted = true;
+      } else if (payload.status.toLowerCase() === "pending") {
+        payload.isCompleted = false;
+      }
+    }
+
+    // Primary PATCH API call: PATCH /api/v1/tasks/:id
+    const targetUrl = `${API_BASE_URL}${TASKS_ENDPOINT}/${cleanId}`;
+    let res;
+
+    try {
+      res = await axios.patch(targetUrl, payload, {
+        withCredentials: true,
+        headers,
+      });
+    } catch (patchErr) {
+      // If /api/v1/tasks/:id returns 404, fallback to /tasks/:id endpoint
+      if (patchErr.response?.status === 404 && TASKS_ENDPOINT !== "/tasks") {
+        try {
+          res = await axios.patch(`${API_BASE_URL}/tasks/${cleanId}`, payload, {
+            withCredentials: true,
+            headers,
+          });
+        } catch (fallbackErr) {
+          throw fallbackErr;
+        }
+      } else {
+        throw patchErr;
+      }
+    }
+
     return res.data;
   } catch (error) {
     return (
@@ -244,6 +338,11 @@ export const updateTask = async (id, data, token = null) => {
     );
   }
 };
+
+/**
+ * Alias for updateTask using PATCH
+ */
+export const patchTask = updateTask;
 
 /**
  * Delete Task API Call
@@ -280,6 +379,7 @@ export const tasksService = {
   createTask,
   getTaskById,
   updateTask,
+  patchTask,
   deleteTask,
 };
 

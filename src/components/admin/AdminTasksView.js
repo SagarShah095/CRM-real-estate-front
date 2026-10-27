@@ -27,11 +27,18 @@ import {
   ExternalLink,
   Layers,
   X,
+  Pencil,
 } from "lucide-react";
 import CreateTaskModal from "./CreateTaskModal";
-import { useTasksQuery } from "@/hooks/useTasksQuery";
-import { useProjectsQuery } from "@/hooks/useProjectsQuery";
-import { useUsersQuery } from "@/hooks/useUsersQuery";
+import EditTaskModal from "./EditTaskModal";
+import DeleteConfirmationModal from "./DeleteConfirmationModal";
+import {
+  useTasksQuery,
+  useUpdateTaskMutation,
+  useDeleteTaskMutation,
+} from "@/hooks/useTasksQuery";
+import { updateTask } from "@/services/tasks.service";
+import { useDropdownData } from "@/hooks/useDropdownData";
 import { storage } from "@/utils/storage";
 
 const DATE_RANGE_OPTIONS = [
@@ -155,9 +162,15 @@ export default function AdminTasksView() {
 
   const [activeTab, setActiveTab] = useState("Tasks (All)");
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [taskToEdit, setTaskToEdit] = useState(null);
+  const [taskToDelete, setTaskToDelete] = useState(null);
+  const [isPatchingTaskId, setIsPatchingTaskId] = useState(null);
   const [showQueryInspector, setShowQueryInspector] = useState(false);
   const [selectedTaskForView, setSelectedTaskForView] = useState(null);
   const [apiBanner, setApiBanner] = useState(null); // { type: 'success' | 'error' | 'info', title: string, message: string }
+
+  const updateTaskMutation = useUpdateTaskMutation();
+  const deleteTaskMutation = useDeleteTaskMutation();
 
   // Read initial filter values from URL searchParams (no forced defaults for dateRange, sortBy, or sortOrder)
   const [filters, setFilters] = useState(() => ({
@@ -262,73 +275,13 @@ export default function AdminTasksView() {
     refetch: refetchTasks,
   } = useTasksQuery(queryParams, { enabled: true });
 
-  // Optional: Fetch Projects & Users for realistic dropdown options
-  const { data: projectsData } = useProjectsQuery({}, { enabled: true });
-  const { data: usersData } = useUsersQuery({}, { enabled: true });
-
   const currentAdmin = typeof window !== "undefined" ? storage.getUser() : null;
   const currentAdminId =
     currentAdmin?.id || currentAdmin?._id || currentAdmin?.userId;
 
-  const projectOptions = useMemo(() => {
-    const list =
-      projectsData?.data?.projects ||
-      projectsData?.data ||
-      projectsData?.projects ||
-      [];
-    if (Array.isArray(list) && list.length > 0) {
-      return list.map((p) => ({
-        id: p._id || p.id || p.code,
-        code: p.code || p.id || p._id,
-        name: p.name || p.title || p.projectName || "Unnamed Project",
-      }));
-    }
-    return [
-      {
-        id: "proj-skyline-01",
-        code: "SKPIN",
-        name: "Skyline Pinnacle (Residential)",
-      },
-      { id: "proj-shivpooja-01", code: "SPH", name: "Shiv Pooja Heights" },
-      { id: "proj-royal-01", code: "RPE", name: "Royal Palms Estate" },
-      { id: "proj-emerald-01", code: "ETW", name: "Emerald Towers" },
-      { id: "proj-jigar-01", code: "JSP", name: "Jigar Shah Park" },
-    ];
-  }, [projectsData]);
-
-  const userOptions = useMemo(() => {
-    const list =
-      usersData?.data?.users || usersData?.data || usersData?.users || [];
-    if (Array.isArray(list) && list.length > 0) {
-      // Filter for users created by this admin
-      const adminUsers = list.filter((u) => {
-        const creator = u.createdBy || u.adminId || u.createdById || u.tenantId;
-        if (!creator || !currentAdminId) return true;
-        const creatorId =
-          typeof creator === "object" ? creator._id || creator.id : creator;
-        return String(creatorId) === String(currentAdminId);
-      });
-      const sourceList = adminUsers.length > 0 ? adminUsers : list;
-
-      return sourceList.map((u) => ({
-        id: u._id || u.id || u.userId,
-        name:
-          u.name ||
-          `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
-          u.userName ||
-          u.email ||
-          "User",
-        role: u.role || u.designation || u.department || "Agent",
-      }));
-    }
-    return [
-      { id: "usr-emp-01", name: "Jagdish Patel", role: "Sales Executive" },
-      { id: "usr-emp-02", name: "Mahesh Chauhan", role: "Relationship Mgr" },
-      { id: "usr-emp-03", name: "Rahul Mehta", role: "Senior Sales" },
-      { id: "usr-admin-01", name: "Aditi R.", role: "Pre-Sales Lead" },
-      { id: "usr-admin-02", name: "Vikram S.", role: "Pre-Sales Rep" },
-    ];
-  }, [usersData, currentAdminId]);
+  // Cache-first: reads from TanStack cache; only fetches from network when cache is empty
+  const { projectsList: projectOptions, usersList: userOptions } =
+    useDropdownData({ currentAdminId });
 
   // Helper to map project ID to Project Name from Project API
   const getProjectName = useCallback(
@@ -462,14 +415,17 @@ export default function AdminTasksView() {
       setApiBanner({
         type: "error",
         title: "GET /api/v1/tasks Error",
-        message: apiResponse.message || "Failed to load tasks with current filters.",
+        message:
+          apiResponse.message || "Failed to load tasks with current filters.",
       });
       setTasks([]);
       return;
     }
 
     // Auto-clear GET error if a subsequent request succeeds
-    setApiBanner((prev) => (prev?.title === "GET /api/v1/tasks Error" ? null : prev));
+    setApiBanner((prev) =>
+      prev?.title === "GET /api/v1/tasks Error" ? null : prev,
+    );
 
     const serverTasks =
       apiResponse?.data?.tasks ??
@@ -628,6 +584,149 @@ export default function AdminTasksView() {
       message: `Task "${newTask.title || "New Task"}" was saved and scheduled on the server.`,
     });
     if (refetchTasks) refetchTasks();
+  };
+
+  const handleTaskUpdated = (updatedTask) => {
+    const updatedId = updatedTask.id || updatedTask._id;
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === updatedId || t._id === updatedId
+          ? { ...t, ...updatedTask }
+          : t,
+      ),
+    );
+    if (
+      selectedTaskForView &&
+      (selectedTaskForView.id === updatedId ||
+        selectedTaskForView._id === updatedId)
+    ) {
+      setSelectedTaskForView((prev) => ({ ...prev, ...updatedTask }));
+    }
+    setApiBanner({
+      type: "success",
+      title: "Task Updated via PATCH /tasks/:id",
+      message: `Task "${updatedTask.title || updatedId}" was updated successfully using PATCH /tasks/${updatedId}.`,
+    });
+    if (refetchTasks) refetchTasks();
+  };
+
+  const handleQuickStatusToggle = async (taskItem) => {
+    const taskId = taskItem.id || taskItem._id;
+    if (!taskId || isPatchingTaskId) return;
+
+    const currentSt = String(taskItem.status || "").toLowerCase();
+    const isCompleted =
+      currentSt === "completed" || Boolean(taskItem.isCompleted);
+    const newStatus = isCompleted ? "pending" : "completed";
+    const newIsCompleted = !isCompleted;
+
+    setIsPatchingTaskId(taskId);
+
+    // Optimistically update list
+    setTasks((prev) =>
+      prev.map((t) =>
+        t.id === taskId || t._id === taskId
+          ? { ...t, status: newStatus, isCompleted: newIsCompleted }
+          : t,
+      ),
+    );
+
+    if (
+      selectedTaskForView &&
+      (selectedTaskForView.id === taskId || selectedTaskForView._id === taskId)
+    ) {
+      setSelectedTaskForView((prev) => ({
+        ...prev,
+        status: newStatus,
+        isCompleted: newIsCompleted,
+      }));
+    }
+
+    try {
+      // Dispatches PATCH /api/v1/tasks/:id (or /tasks/:id)
+      const res = await updateTask(taskId, {
+        status: newStatus,
+        isCompleted: newIsCompleted,
+      });
+
+      if (res && res.success !== false && !res.error) {
+        setApiBanner({
+          type: "success",
+          title: "Status Updated (PATCH /tasks/:id)",
+          message: `Task #${taskId} is now "${newStatus}" via PATCH /tasks/${taskId}.`,
+        });
+        if (refetchTasks) refetchTasks();
+      } else {
+        // Revert on failure
+        setTasks((prev) =>
+          prev.map((t) =>
+            t.id === taskId || t._id === taskId
+              ? { ...t, status: currentSt, isCompleted }
+              : t,
+          ),
+        );
+        if (
+          selectedTaskForView &&
+          (selectedTaskForView.id === taskId ||
+            selectedTaskForView._id === taskId)
+        ) {
+          setSelectedTaskForView((prev) => ({
+            ...prev,
+            status: currentSt,
+            isCompleted,
+          }));
+        }
+        setApiBanner({
+          type: "error",
+          title: "PATCH /tasks/:id Update Failed",
+          message:
+            res?.message || "Failed to update task status via PATCH API.",
+        });
+      }
+    } catch (err) {
+      // Revert on failure
+      setTasks((prev) =>
+        prev.map((t) =>
+          t.id === taskId || t._id === taskId
+            ? { ...t, status: currentSt, isCompleted }
+            : t,
+        ),
+      );
+      setApiBanner({
+        type: "error",
+        title: "PATCH /tasks/:id Network Error",
+        message: err.message || "Could not reach tasks API server.",
+      });
+    } finally {
+      setIsPatchingTaskId(null);
+    }
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!taskToDelete) return;
+    const deleteId = taskToDelete.id || taskToDelete._id;
+    try {
+      const res = await deleteTaskMutation.mutateAsync(deleteId);
+      if (res?.success === false) {
+        throw new Error(res.message || "Delete failed");
+      }
+      setTasks((prev) =>
+        prev.filter((t) => t.id !== deleteId && t._id !== deleteId),
+      );
+      setApiBanner({
+        type: "success",
+        title: "Task Deleted Successfully",
+        message: `Task #${deleteId} was removed from the server.`,
+      });
+    } catch (err) {
+      setApiBanner({
+        type: "error",
+        title: "DELETE /api/v1/tasks/:id Failed",
+        message: err?.message || "Failed to delete task.",
+      });
+    } finally {
+      setTaskToDelete(null);
+    }
   };
 
   // Surface query network/server error if GET fails completely
@@ -814,8 +913,8 @@ export default function AdminTasksView() {
             apiBanner.type === "success"
               ? "bg-emerald-50 text-emerald-950 border-emerald-200"
               : apiBanner.type === "info"
-              ? "bg-blue-50 text-blue-950 border-blue-200"
-              : "bg-red-50 text-red-950 border-red-200"
+                ? "bg-blue-50 text-blue-950 border-blue-200"
+                : "bg-red-50 text-red-950 border-red-200"
           }`}
         >
           <div className="flex items-start gap-3">
@@ -829,7 +928,10 @@ export default function AdminTasksView() {
             <div>
               <div className="flex items-center gap-2">
                 <p className="font-extrabold text-sm">
-                  {apiBanner.title || (apiBanner.type === "success" ? "Success" : "API Response Notice")}
+                  {apiBanner.title ||
+                    (apiBanner.type === "success"
+                      ? "Success"
+                      : "API Response Notice")}
                 </p>
                 <span
                   className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
@@ -838,7 +940,9 @@ export default function AdminTasksView() {
                       : "bg-red-200 text-red-800"
                   }`}
                 >
-                  {apiBanner.type === "success" ? "success: true" : "success: false"}
+                  {apiBanner.type === "success"
+                    ? "success: true"
+                    : "success: false"}
                 </span>
               </div>
               <p className="text-xs font-semibold mt-1 text-slate-800 leading-relaxed">
@@ -1492,32 +1596,38 @@ export default function AdminTasksView() {
                       </td>
 
                       <td className="py-3.5 px-3">
-                        <span className="flex items-center gap-1.5 font-bold capitalize">
-                          <span
-                            className={`h-2 w-2 rounded-full ${
-                              st === "completed"
-                                ? "bg-emerald-500"
-                                : st === "overdue"
-                                  ? "bg-red-500"
-                                  : "bg-amber-500"
-                            }`}
-                          />
-                          <span
-                            className={
-                              st === "completed"
-                                ? "text-emerald-700"
-                                : st === "overdue"
-                                  ? "text-red-600"
-                                  : "text-amber-600"
-                            }
-                          >
-                            {t.status}
-                          </span>
-                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleQuickStatusToggle(t)}
+                          disabled={isPatchingTaskId === t.id}
+                          className={`group inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full font-bold text-[11px] capitalize transition-all border shadow-2xs ${
+                            st === "completed"
+                              ? "bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100"
+                              : st === "overdue"
+                                ? "bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
+                                : "bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100"
+                          }`}
+                          title="Click to toggle status (dispatches PATCH /tasks/:id)"
+                        >
+                          {isPatchingTaskId === t.id ? (
+                            <RefreshCw className="h-3 w-3 animate-spin text-orange-600" />
+                          ) : (
+                            <span
+                              className={`h-2 w-2 rounded-full ${
+                                st === "completed"
+                                  ? "bg-emerald-500"
+                                  : st === "overdue"
+                                    ? "bg-red-500"
+                                    : "bg-amber-500"
+                              }`}
+                            />
+                          )}
+                          <span>{t.status}</span>
+                        </button>
                       </td>
 
                       <td className="py-3.5 px-3 text-right">
-                        <div className="flex items-center justify-end gap-2">
+                        <div className="flex items-center justify-end gap-1.5">
                           <button
                             onClick={() => setSelectedTaskForView(t)}
                             className="p-1.5 text-slate-400 hover:text-slate-700 rounded-lg hover:bg-slate-100 transition-colors"
@@ -1526,6 +1636,14 @@ export default function AdminTasksView() {
                             <Eye className="h-4 w-4" />
                           </button>
                           <button
+                            onClick={() => setTaskToEdit(t)}
+                            className="p-1.5 text-slate-400 hover:text-orange-600 rounded-lg hover:bg-orange-50 transition-colors"
+                            title="Edit Task (PATCH /tasks/:id)"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </button>
+                          <button
+                            onClick={() => setTaskToDelete(t)}
                             className="p-1.5 text-slate-400 hover:text-red-600 rounded-lg hover:bg-red-50 transition-colors"
                             title="Delete Task"
                           >
@@ -1743,17 +1861,92 @@ export default function AdminTasksView() {
               )}
             </div>
 
-            <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex justify-end">
+            <div className="px-6 py-3 bg-slate-50 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-2.5">
               <button
-                onClick={() => setSelectedTaskForView(null)}
-                className="px-4 py-2 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition-colors"
+                type="button"
+                onClick={() => handleQuickStatusToggle(selectedTaskForView)}
+                disabled={isPatchingTaskId === selectedTaskForView.id}
+                className="w-full sm:w-auto px-3 py-2 rounded-xl border border-slate-200 bg-white hover:bg-slate-100 text-slate-700 font-bold text-xs transition-colors flex items-center justify-center gap-1.5 shadow-2xs"
               >
-                Close
+                {isPatchingTaskId === selectedTaskForView.id ? (
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin text-orange-600" />
+                ) : (
+                  <CheckCircle2
+                    className={`h-3.5 w-3.5 ${
+                      selectedTaskForView.status === "completed"
+                        ? "text-amber-600"
+                        : "text-emerald-600"
+                    }`}
+                  />
+                )}
+                <span>
+                  {selectedTaskForView.status === "completed"
+                    ? "Mark as Pending (PATCH)"
+                    : "Mark as Completed (PATCH)"}
+                </span>
               </button>
+
+              <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const t = selectedTaskForView;
+                    setSelectedTaskForView(null);
+                    setTaskToEdit(t);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold text-xs transition-colors flex items-center gap-1.5 shadow-sm"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  <span>Edit Task (PATCH)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedTaskForView(null)}
+                  className="px-4 py-2 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs transition-colors"
+                >
+                  Close
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
+
+      {/* Edit Task Modal - Dispatches PATCH /tasks/:id */}
+      <EditTaskModal
+        isOpen={Boolean(taskToEdit)}
+        onClose={() => setTaskToEdit(null)}
+        task={taskToEdit}
+        onTaskUpdated={(updated) => {
+          handleTaskUpdated(updated);
+          setTaskToEdit(null);
+        }}
+        onError={(errorMsg) => {
+          setApiBanner({
+            type: "error",
+            title: "Task Update Failed (PATCH /tasks/:id)",
+            message: errorMsg,
+          });
+        }}
+        projectOptions={projectOptions}
+        userOptions={userOptions}
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmationModal
+        isOpen={Boolean(taskToDelete)}
+        onClose={() => setTaskToDelete(null)}
+        onConfirm={handleConfirmDelete}
+        title="Delete Scheduled Task"
+        itemName={taskToDelete?.title || `Task #${taskToDelete?.id}`}
+        itemDetails={
+          taskToDelete
+            ? `Lead: ${taskToDelete.leadName} | Scheduled: ${taskToDelete.scheduledFor}`
+            : null
+        }
+        endpointInfo={`DELETE /api/v1/tasks/${taskToDelete?.id}`}
+        isDeleting={deleteTaskMutation.isPending}
+      />
     </div>
   );
 }

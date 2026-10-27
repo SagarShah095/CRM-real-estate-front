@@ -5,6 +5,7 @@ import {
   getTasks,
   createTask,
   updateTask,
+  patchTask,
   deleteTask,
 } from "@/services/tasks.service";
 
@@ -74,7 +75,7 @@ export function useCreateTaskMutation() {
 
 /**
  * Mutation Hook to Update an Existing Task.
- * Endpoint: PUT/PATCH /api/v1/tasks/:id
+ * Endpoint: PATCH /api/v1/tasks/:id (or /tasks/:id)
  */
 export function useUpdateTaskMutation() {
   const queryClient = useQueryClient();
@@ -117,6 +118,11 @@ export function useUpdateTaskMutation() {
     },
   });
 }
+
+/**
+ * Alias for useUpdateTaskMutation using PATCH /tasks/:id
+ */
+export const usePatchTaskMutation = useUpdateTaskMutation;
 
 /**
  * Mutation Hook to Delete a Task.

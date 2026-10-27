@@ -22,10 +22,8 @@ import {
   Sparkles,
   RefreshCw,
 } from "lucide-react";
-import { createTask } from "@/services/tasks.service";
-import { useProjectsQuery } from "@/hooks/useProjectsQuery";
-import { useUsersQuery } from "@/hooks/useUsersQuery";
-import { useLeadsQuery } from "@/hooks/useLeadsQuery";
+import { createTask, updateTask, patchTask } from "@/services/tasks.service";
+import { useDropdownData } from "@/hooks/useDropdownData";
 import { storage } from "@/utils/storage";
 
 const REMINDER_OPTIONS = [
@@ -59,101 +57,49 @@ export default function CreateTaskModal({
   isOpen,
   onClose,
   onTaskCreated,
+  onTaskUpdated,
   onError,
+  task = null,
+  mode = "create",
   projectOptions: propProjectOptions,
   userOptions: propUserOptions,
 }) {
-  // Live Projects, Users, & Leads queries (active when modal is opened)
-  const { data: projectsApiData } = useProjectsQuery(
-    {},
-    { enabled: Boolean(isOpen && !propProjectOptions) },
-  );
-  const { data: usersApiData } = useUsersQuery(
-    {},
-    { enabled: Boolean(isOpen && !propUserOptions) },
-  );
-  const { data: leadsApiData, isLoading: isLeadsLoading } = useLeadsQuery(
-    {},
-    { enabled: Boolean(isOpen) },
-  );
-
+  const isEditMode = mode === "edit" || Boolean(task);
+  const targetTask = task?._raw || task;
+  const taskId = targetTask?.id || targetTask?._id || targetTask?.taskId || "";
   const currentAdmin = typeof window !== "undefined" ? storage.getUser() : null;
   const currentAdminId =
     currentAdmin?.id || currentAdmin?._id || currentAdmin?.userId;
 
+  /**
+   * Cache-first: all three lists come from the shared TanStack cache populated
+   * by AdminTasksView (or whoever opened first).  Network is only hit when
+   * the relevant cache bucket is empty.
+   */
+  const {
+    projectsList: cachedProjects,
+    usersList: cachedUsers,
+    leadsList: cachedLeads,
+    isLeadsLoading,
+  } = useDropdownData({ enabled: Boolean(isOpen), currentAdminId });
+
   const [isCustomLeadInput, setIsCustomLeadInput] = useState(false);
 
-  // Resolve Leads list from Tenant Leads API
-  const availableLeads = useMemo(() => {
-    const list =
-      leadsApiData?.data?.leads ||
-      leadsApiData?.data ||
-      leadsApiData?.leads ||
-      (Array.isArray(leadsApiData) ? leadsApiData : []);
-    if (Array.isArray(list) && list.length > 0) {
-      return list.map((l) => ({
-        id: l._id || l.id || l.leadId,
-        name: l.name || l.leadName || l.fullName || "Lead",
-        mobile: l.phone || l.mobile || l.contactNumber || "",
-        stage: l.stage || "new",
-      }));
-    }
-    return [];
-  }, [leadsApiData]);
-
-  // Resolve Projects list from Project API
+  // Resolve Projects: prefer prop → cache → empty
   const availableProjects = useMemo(() => {
-    if (propProjectOptions && propProjectOptions.length > 0) {
+    if (propProjectOptions && propProjectOptions.length > 0)
       return propProjectOptions;
-    }
-    const list =
-      projectsApiData?.data?.projects ||
-      projectsApiData?.data?.data ||
-      projectsApiData?.data ||
-      projectsApiData?.projects ||
-      [];
-    if (Array.isArray(list) && list.length > 0) {
-      return list.map((p) => ({
-        id: p._id || p.id || p.code,
-        code: p.code || p.id,
-        name: p.name || p.title || p.projectName || "Unnamed Project",
-      }));
-    }
-    return PRESET_PROJECTS;
-  }, [propProjectOptions, projectsApiData]);
+    return cachedProjects;
+  }, [propProjectOptions, cachedProjects]);
 
-  // Resolve Users created by this admin from User API
+  // Resolve Users: prefer prop → cache → empty
   const availableUsers = useMemo(() => {
-    if (propUserOptions && propUserOptions.length > 0) {
-      return propUserOptions;
-    }
-    const list =
-      usersApiData?.data?.users ||
-      usersApiData?.data ||
-      usersApiData?.users ||
-      [];
-    if (Array.isArray(list) && list.length > 0) {
-      const adminCreated = list.filter((u) => {
-        const creator = u.createdBy || u.adminId || u.createdById || u.tenantId;
-        if (!creator || !currentAdminId) return true;
-        const creatorId =
-          typeof creator === "object" ? creator._id || creator.id : creator;
-        return String(creatorId) === String(currentAdminId);
-      });
-      const source = adminCreated.length > 0 ? adminCreated : list;
-      return source.map((u) => ({
-        id: u._id || u.id || u.userId,
-        name:
-          u.name ||
-          `${u.firstName || ""} ${u.lastName || ""}`.trim() ||
-          u.userName ||
-          u.email ||
-          "User",
-        role: u.role || u.designation || u.department || "Agent",
-      }));
-    }
-    return PRESET_USERS;
-  }, [propUserOptions, usersApiData, currentAdminId]);
+    if (propUserOptions && propUserOptions.length > 0) return propUserOptions;
+    return cachedUsers;
+  }, [propUserOptions, cachedUsers]);
+
+  // Leads always come from cache (no prop override)
+  const availableLeads = cachedLeads;
 
   // Helper to format default datetime input string (YYYY-MM-DDTHH:mm)
   const getDefaultDateTime = () => {
@@ -193,11 +139,61 @@ export default function CreateTaskModal({
     stage: "site_visit_scheduled",
     preSalesAgentId: "usr-admin-01",
     priority: "high",
+    status: "pending",
   });
 
-  // Automatically sync form defaults when projects/users/leads load
+  // Initialize / Sync form data when editing an existing task
   useEffect(() => {
-    if (isOpen && availableLeads.length > 0) {
+    if (isOpen && isEditMode && targetTask) {
+      const rawDate =
+        targetTask.dueDate || targetTask.scheduledForDate || targetTask.date;
+      let dtString = getDefaultDateTime();
+      let isoDate = new Date(Date.now() + 86400000).toISOString();
+      if (rawDate) {
+        try {
+          const d = new Date(rawDate);
+          if (!isNaN(d.getTime())) {
+            isoDate = d.toISOString();
+            const pad = (n) => String(n).padStart(2, "0");
+            dtString = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+          }
+        } catch (_) {}
+      }
+      setDueDateTimeInput(dtString);
+
+      const st = String(targetTask.status || "").toLowerCase();
+      const isDone = Boolean(targetTask.isCompleted || st === "completed");
+
+      setFormData({
+        activityType: (targetTask.activityType || "call").toLowerCase(),
+        assignedTo: targetTask.assignedTo || "",
+        leadId: targetTask.leadId || "",
+        leadName: targetTask.leadName || "",
+        mobile: targetTask.mobile || targetTask.phone || "",
+        title: targetTask.title || "",
+        remark: targetTask.remark || "",
+        remindMe:
+          typeof targetTask.remindMe === "boolean" ? targetTask.remindMe : true,
+        isCompleted: isDone,
+        status: isDone ? "completed" : targetTask.status || "pending",
+        dueDate: isoDate,
+        reminderTime: targetTask.reminderTime || "15 Minute",
+        reminderMinutesBefore: Number(targetTask.reminderMinutesBefore ?? 15),
+        projectId: targetTask.projectId || "",
+        entityType: targetTask.entityType || "lead",
+        team: targetTask.team || "Sales",
+        category: targetTask.category || "Residential",
+        stage: targetTask.stage || "site_visit_scheduled",
+        preSalesAgentId: targetTask.preSalesAgentId || "",
+        priority: (targetTask.priority || "high").toLowerCase(),
+      });
+      setIsCustomLeadInput(true);
+    }
+  }, [isOpen, isEditMode, targetTask]);
+
+  // Automatically sync form defaults when projects/users/leads load in create mode
+  useEffect(() => {
+    if (isOpen && !isEditMode && availableLeads.length > 0) {
       setFormData((prev) => {
         const hasLead = availableLeads.some(
           (l) => String(l.id) === String(prev.leadId),
@@ -212,10 +208,10 @@ export default function CreateTaskModal({
         };
       });
     }
-  }, [isOpen, availableLeads, isCustomLeadInput]);
+  }, [isOpen, isEditMode, availableLeads, isCustomLeadInput]);
 
   useEffect(() => {
-    if (isOpen && availableProjects.length > 0) {
+    if (isOpen && !isEditMode && availableProjects.length > 0) {
       setFormData((prev) => {
         const hasProject = availableProjects.some(
           (p) => String(p.id) === String(prev.projectId),
@@ -225,10 +221,10 @@ export default function CreateTaskModal({
           : { ...prev, projectId: availableProjects[0].id };
       });
     }
-  }, [isOpen, availableProjects]);
+  }, [isOpen, isEditMode, availableProjects]);
 
   useEffect(() => {
-    if (isOpen && availableUsers.length > 0) {
+    if (isOpen && !isEditMode && availableUsers.length > 0) {
       setFormData((prev) => {
         const hasAssigned = availableUsers.some(
           (u) => String(u.id) === String(prev.assignedTo),
@@ -249,7 +245,7 @@ export default function CreateTaskModal({
         };
       });
     }
-  }, [isOpen, availableUsers]);
+  }, [isOpen, isEditMode, availableUsers]);
 
   if (!isOpen) return null;
 
@@ -321,7 +317,7 @@ export default function CreateTaskModal({
     });
   };
 
-  // Build the clean POST payload matching user's exact specification
+  // Build the clean payload matching user's exact specification
   const buildPayload = () => {
     return {
       activityType: formData.activityType,
@@ -333,6 +329,8 @@ export default function CreateTaskModal({
       remark: formData.remark,
       remindMe: Boolean(formData.remindMe),
       isCompleted: Boolean(formData.isCompleted),
+      status:
+        formData.status || (formData.isCompleted ? "completed" : "pending"),
       dueDate: formData.dueDate || new Date(dueDateTimeInput).toISOString(),
       reminderTime: formData.reminderTime,
       reminderMinutesBefore: Number(formData.reminderMinutesBefore),
@@ -362,8 +360,8 @@ export default function CreateTaskModal({
 
     const payload = buildPayload();
 
-    // Client-side validations to prevent predictable tenant rejections
-    if (!payload.leadId || !String(payload.leadId).trim()) {
+    // Client-side validations for creation
+    if (!isEditMode && (!payload.leadId || !String(payload.leadId).trim())) {
       const msg =
         "A valid Lead ID from your tenant is required. Please select a lead from the list or enter a registered Lead ID.";
       setApiStatus({
@@ -397,6 +395,81 @@ export default function CreateTaskModal({
     }
 
     try {
+      if (isEditMode) {
+        // Send details in task PATCH API: PATCH /api/v1/tasks/:id (or /tasks/:id)
+        const result = await updateTask(taskId, payload);
+
+        if (result && result.success !== false && !result.error) {
+          setApiStatus({
+            type: "success",
+            message:
+              result.message ||
+              `Task updated successfully via PATCH /tasks/${taskId}!`,
+          });
+
+          const assignedUserObj = availableUsers.find(
+            (u) => String(u.id) === String(formData.assignedTo),
+          );
+          const preSalesUserObj = availableUsers.find(
+            (u) => String(u.id) === String(formData.preSalesAgentId),
+          );
+          const projectObj = availableProjects.find(
+            (p) => String(p.id) === String(formData.projectId),
+          );
+
+          const updatedTaskForUI = {
+            ...targetTask,
+            ...payload,
+            id: taskId,
+            leadName:
+              formData.leadName || targetTask.leadName || formData.leadId,
+            mobile: formData.mobile || targetTask.mobile || "",
+            assignedToName: assignedUserObj?.name || formData.assignedTo,
+            preSalesAgent: preSalesUserObj?.name || formData.preSalesAgentId,
+            projectName: projectObj?.name || formData.projectId,
+            scheduledFor: new Date(payload.dueDate).toLocaleString("en-US", {
+              month: "short",
+              day: "numeric",
+              hour: "numeric",
+              minute: "2-digit",
+              hour12: true,
+            }),
+            activityType: payload.activityType.toUpperCase(),
+            status: payload.isCompleted
+              ? "completed"
+              : payload.status || "pending",
+          };
+
+          if (onTaskUpdated) {
+            onTaskUpdated(updatedTaskForUI);
+          }
+
+          setTimeout(() => {
+            isSubmittingRef.current = false;
+            setIsSubmitting(false);
+            onClose();
+          }, 900);
+          return;
+        } else {
+          const errorMsg =
+            result?.message ||
+            result?.error ||
+            result?.data?.message ||
+            `Failed to update task via PATCH /tasks/${taskId}`;
+
+          setApiStatus({
+            type: "error",
+            message: errorMsg,
+            details: `The server rejected PATCH /tasks/${taskId}. Please verify fields.`,
+          });
+
+          if (onError) onError(errorMsg);
+          isSubmittingRef.current = false;
+          setIsSubmitting(false);
+          return;
+        }
+      }
+
       // Send details in task POST API
       const result = await createTask(payload);
 
@@ -519,14 +592,18 @@ export default function CreateTaskModal({
             <div>
               <div className="flex items-center gap-2">
                 <h3 className="text-base font-bold text-white">
-                  Create Task & Schedule Activity
+                  {isEditMode
+                    ? "Edit Task Details"
+                    : "Create Task & Schedule Activity"}
                 </h3>
-                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30">
-                  POST /api/v1/tasks
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-orange-500/20 text-orange-400 border border-orange-500/30 font-mono">
+                  {isEditMode ? `PATCH /tasks/${taskId}` : "POST /api/v1/tasks"}
                 </span>
               </div>
               <p className="text-xs text-slate-400">
-                Dispatches schema-validated task payload to the API
+                {isEditMode
+                  ? "Updates task properties directly using PATCH /tasks/:id"
+                  : "Dispatches schema-validated task payload to the API"}
               </p>
             </div>
           </div>
@@ -1017,7 +1094,36 @@ export default function CreateTaskModal({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                {/* Status */}
+                <div>
+                  <label className="block text-slate-700 font-bold mb-1">
+                    Status
+                  </label>
+                  <select
+                    name="status"
+                    value={
+                      formData.status ||
+                      (formData.isCompleted ? "completed" : "pending")
+                    }
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setFormData((prev) => ({
+                        ...prev,
+                        status: val,
+                        isCompleted: val === "completed",
+                      }));
+                    }}
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-orange-500 focus:bg-white transition-all font-semibold capitalize"
+                  >
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="overdue">Overdue</option>
+                    <option value="cancelled">Cancelled</option>
+                  </select>
+                </div>
+
                 {/* Team */}
                 <div>
                   <label className="block text-slate-700 font-bold mb-1">
@@ -1115,7 +1221,11 @@ export default function CreateTaskModal({
                 ) : (
                   <div className="text-slate-500 flex items-center gap-1.5">
                     <span className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Ready to dispatch to POST /api/v1/tasks</span>
+                    <span>
+                      {isEditMode
+                        ? `Ready to dispatch PATCH /tasks/${taskId}`
+                        : "Ready to dispatch to POST /api/v1/tasks"}
+                    </span>
                   </div>
                 )}
               </div>
@@ -1135,7 +1245,13 @@ export default function CreateTaskModal({
                 >
                   <CheckCircle2 className="h-4 w-4" />
                   <span>
-                    {isSubmitting ? "Dispatching API..." : "Send Task to API"}
+                    {isSubmitting
+                      ? isEditMode
+                        ? "Saving (PATCH)..."
+                        : "Dispatching API..."
+                      : isEditMode
+                        ? "Save Changes (PATCH)"
+                        : "Send Task to API"}
                   </span>
                 </button>
               </div>
